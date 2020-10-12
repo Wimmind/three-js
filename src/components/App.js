@@ -1,7 +1,7 @@
 import React, { Component } from 'react';
 import * as threeFunctions from './three';
 
-import textures from '../data.json'
+import textures from '../data'
 
 //const img = 'https://i.imgur.com/GFLxXVV.jpg';
 
@@ -11,8 +11,7 @@ export default class App extends Component {
   }
 
   componentDidMount() {
-    const img = process.env.PUBLIC_URL + `/textures/${textures[0].src}`
-    threeFunctions.init(img)
+    threeFunctions.init(textures)
     threeFunctions.animate();
   }
 
@@ -25,9 +24,7 @@ export default class App extends Component {
 
   render() {
     return (
-      <div className='wrapper'>
-       
-      </div>
+      <div className='wrapper'></div>
     );
   }
 }

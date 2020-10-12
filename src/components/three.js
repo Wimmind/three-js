@@ -14,7 +14,7 @@ export function posCam(img) {
     // const texture = new THREE.TextureLoader().load(img);
     // const material = new THREE.MeshBasicMaterial({map: texture});
     // scene.add( new THREE.Mesh(geometry, material));
-    console.log(geometrySphere)
+    console.log(scene.children)
 }
 
 function initArrow() {
@@ -31,30 +31,38 @@ function initArrow() {
     arrowGeometry.computeBoundingSphere();
     let material = new THREE.MeshBasicMaterial({ color: 'red', thickness: 10 });
     let mesh = new THREE.Mesh(arrowGeometry, material);
-    
+
     arrowGroup = new THREE.Group();
-	arrowGroup.add(mesh);
+    arrowGroup.add(mesh);
     scene.add(arrowGroup);
 }
 
-export function init(img) {
+function initSpheres(textures) {
+    textures.forEach(({src,coords})=>{
+        geometrySphere = new THREE.SphereBufferGeometry(10, 60, 40);
+    
+        geometrySphere.scale(-1, 1, 1);
+    
+        // наложить картинку
+        const img = process.env.PUBLIC_URL + `/textures/${src}`
+        var texture = new THREE.TextureLoader().load(img);
+        var material = new THREE.MeshBasicMaterial({ map: texture });
+        const mesh = new THREE.Mesh(geometrySphere, material);
+        scene.add(mesh);
+        const {x,y,z} = coords;
+        mesh.position.set(x*20, y*20, z*20);
+    })
+
+}
+
+export function init(textures) {
     // объявить камеру
-    camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 1, 1100);
+    camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 1, 1100);
     camera.target = new THREE.Vector3(0, 0, 0);
-
-    geometrySphere = new THREE.SphereBufferGeometry(50, 60, 40);
-    // -1 выворачивает сферу наизнанку и текстура накладывается изнутри а не снаружи
-    geometrySphere.scale(-1, 1, 1);
-
-
-    // наложить картинку
-    var texture = new THREE.TextureLoader().load(img);
-    var material = new THREE.MeshBasicMaterial({ map: texture });
-
     // сцена
     scene = new THREE.Scene();
-    scene.add(new THREE.Mesh(geometrySphere, material));
 
+    initSpheres(textures)
     initArrow()
 
     renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -66,11 +74,16 @@ export function init(img) {
     mouse = new THREE.Vector2();
     raycaster = new THREE.Raycaster();
 
-    document.addEventListener('mousedown', onPointerStart);
-    document.addEventListener('mousemove', onPointerMove);
-    document.addEventListener('mouseup', onPointerUp);
-    document.addEventListener('wheel', onDocumentMouseWheel);
-    document.addEventListener('resize', onWindowResize,);
+    const windowEvenets = [
+        { action: 'mousedown', evt: onPointerStart },
+        { action: 'mousemove', evt: onPointerMove },
+        { action: 'mouseup', evt: onPointerUp },
+        { action: 'wheel', evt: onDocumentMouseWheel },
+        { action: 'resize', evt: onWindowResize }
+    ]
+    windowEvenets.forEach(({ action, evt }) => {
+        document.addEventListener(action, evt);
+    })
 }
 
 function onWindowResize() {
@@ -94,21 +107,17 @@ function onPointerStart(event) {
         })[0];
         if (res && res.object) {
             console.log(res.object)
+            console.log(scene.children)
         }
     }
 }
 
-
-var selectedObject = null;
 function onPointerMove(event) {
     if (!mouseDownMouseX) return;
     var clientX = event.clientX;
     var clientY = event.clientY;
     lon = (mouseDownMouseX - clientX) * camera.fov / 600 + mouseDownLon;
     lat = (clientY - mouseDownMouseY) * camera.fov / 600 + mouseDownLat;
-
-    // mouse.x = ( event.clientX / window.innerWidth ) * 2 - 1;
-    // mouse.y = - ( event.clientY / window.innerHeight ) * 2 + 1;
 
 }
 
@@ -126,8 +135,6 @@ function onPointerUp() {
     mouseDownMouseX = null;
 }
 
-
-// колесико мыши 
 function onDocumentMouseWheel(event) {
     var fov = camera.fov + event.deltaY * 0.05;
     camera.fov = THREE.Math.clamp(fov, 10, 75);
@@ -152,19 +159,6 @@ function render() {
     camera.target.y = delta * Math.cos(phi);
     camera.target.z = delta * Math.sin(phi) * Math.sin(theta);
     camera.lookAt(camera.target);
-
-    // let arrowObject;
-    // raycaster.setFromCamera( mouse, camera );
-    // var intersects = raycaster.intersectObjects( scene.children, true );
-    // if (intersects.length) {
-    //     intersects.forEach((figure)=>{
-    //         if (figure.distance<49) {
-    //             // arrowObject = figure;
-    //             // figure.object.material.color.set('blue');
-    //             console.log('хай')
-    //         }
-    //     })
-    // }
 
     renderer.render(scene, camera);
 }
