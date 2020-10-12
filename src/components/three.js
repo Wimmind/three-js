@@ -4,6 +4,8 @@ let camera, scene, renderer, geometrySphere,
     mouseDownMouseX, mouseDownMouseY, mouseDownLon, mouseDownLat,
     lon = 0, lat = 0, phi = 0, theta = 0;
 
+var mouse, raycaster;
+
 export function moveCam({ x, y, z }) {
     camera.target = new THREE.Vector3(x, y, z);
 }
@@ -19,15 +21,15 @@ function initArrow() {
     let arrowGeometry = new THREE.Geometry();
 
     arrowGeometry.vertices.push(
-        new THREE.Vector3(0, 0.5, -3),
-        new THREE.Vector3(-0.5, -0.5, -3),
-        new THREE.Vector3(0.5, -0.5, -3)
+        new THREE.Vector3(0, -3, -7),
+        new THREE.Vector3(-1, -3, -4),
+        new THREE.Vector3(1, -3, -4)
     );
 
     arrowGeometry.faces.push(new THREE.Face3(0, 1, 2));
 
     arrowGeometry.computeBoundingSphere();
-    let material = new THREE.MeshBasicMaterial({ color: 'red' });
+    let material = new THREE.MeshBasicMaterial({ color: 'red', thickness: 10 });
     let mesh = new THREE.Mesh(arrowGeometry, material);
     scene.add(mesh)
 }
@@ -52,12 +54,14 @@ export function init(img) {
 
     initArrow()
 
-    const canvas = document.querySelector('#canvas');
-    renderer = new THREE.WebGLRenderer({ canvas });
-
+    renderer = new THREE.WebGLRenderer( { antialias: true } );
     // убрать размытие
     renderer.setPixelRatio(window.devicePixelRatio);
+    renderer.setSize( window.innerWidth, window.innerHeight );
+	document.querySelector('.wrapper').appendChild( renderer.domElement );
 
+    mouse = new THREE.Vector2();
+    raycaster = new THREE.Raycaster();
 
     document.addEventListener('mousedown', onPointerStart);
     document.addEventListener('mousemove', onPointerMove);
@@ -87,6 +91,9 @@ function onPointerMove(event) {
     var clientY = event.clientY;
     lon = (mouseDownMouseX - clientX) * camera.fov / 600 + mouseDownLon;
     lat = (clientY - mouseDownMouseY) * camera.fov / 600 + mouseDownLat;
+
+    mouse.x = ( event.clientX / window.innerWidth ) * 2 - 1;
+	mouse.y = - ( event.clientY / window.innerHeight ) * 2 + 1;
 }
 
 function onPointerUp() {
@@ -103,6 +110,10 @@ function onDocumentMouseWheel(event) {
 
 export function animate() {
     requestAnimationFrame(animate);
+    render();
+}
+
+function render() {
     const delta = 0.001;
     // азимут поворота камеры в градусах, вращаем камеру 
     lon = Math.max(-360, Math.min(360, lon));
@@ -115,6 +126,20 @@ export function animate() {
     camera.target.y = delta * Math.cos(phi);
     camera.target.z = delta * Math.sin(phi) * Math.sin(theta);
     camera.lookAt(camera.target);
+
+    let arrowObject;
+    raycaster.setFromCamera( mouse, camera );
+    var intersects = raycaster.intersectObjects( scene.children, true );
+    if (intersects.length) {
+        intersects.forEach((figure)=>{
+            if (figure.distance<49) {
+                // arrowObject = figure;
+                // figure.object.material.color.set('blue');
+                console.log('хай')
+            }
+        })
+    }
+
     renderer.render(scene, camera);
 }
 

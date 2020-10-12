@@ -26,8 +26,7 @@ export default class App extends Component {
   render() {
     return (
       <div className='wrapper'>
-        <canvas id="canvas" width={800} height={500}></canvas>
-        <button onClick={this.click}>давай</button>
+       
       </div>
     );
   }
