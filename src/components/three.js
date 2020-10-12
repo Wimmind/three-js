@@ -4,7 +4,7 @@ let camera, scene, renderer, geometrySphere,
     mouseDownMouseX, mouseDownMouseY, mouseDownLon, mouseDownLat,
     lon = 0, lat = 0, phi = 0, theta = 0;
 
-var mouse, raycaster, arrowGroup;
+var mouse, raycaster, arrowGroup, spheresGroup;
 
 export function moveCam({ x, y, z }) {
     camera.target = new THREE.Vector3(x, y, z);
@@ -38,6 +38,7 @@ function initArrow() {
 }
 
 function initSpheres(textures) {
+    spheresGroup = new THREE.Group();
     textures.forEach(({src,coords})=>{
         geometrySphere = new THREE.SphereBufferGeometry(10, 60, 40);
     
@@ -48,11 +49,11 @@ function initSpheres(textures) {
         var texture = new THREE.TextureLoader().load(img);
         var material = new THREE.MeshBasicMaterial({ map: texture });
         const mesh = new THREE.Mesh(geometrySphere, material);
-        scene.add(mesh);
+        spheresGroup.add(mesh);
         const {x,y,z} = coords;
         mesh.position.set(x*20, y*20, z*20);
     })
-
+    scene.add(spheresGroup);
 }
 
 export function init(textures) {
