@@ -4,7 +4,7 @@ let camera, scene, renderer, geometrySphere,
     mouseDownMouseX, mouseDownMouseY, mouseDownLon, mouseDownLat,
     lon = 0, lat = 0, phi = 0, theta = 0;
 
-var mouse, raycaster;
+var mouse, raycaster, arrowGroup;
 
 export function moveCam({ x, y, z }) {
     camera.target = new THREE.Vector3(x, y, z);
@@ -31,7 +31,10 @@ function initArrow() {
     arrowGeometry.computeBoundingSphere();
     let material = new THREE.MeshBasicMaterial({ color: 'red', thickness: 10 });
     let mesh = new THREE.Mesh(arrowGeometry, material);
-    scene.add(mesh)
+    
+    arrowGroup = new THREE.Group();
+	arrowGroup.add(mesh);
+    scene.add(arrowGroup);
 }
 
 export function init(img) {
@@ -54,11 +57,11 @@ export function init(img) {
 
     initArrow()
 
-    renderer = new THREE.WebGLRenderer( { antialias: true } );
+    renderer = new THREE.WebGLRenderer({ antialias: true });
     // убрать размытие
     renderer.setPixelRatio(window.devicePixelRatio);
-    renderer.setSize( window.innerWidth, window.innerHeight );
-	document.querySelector('.wrapper').appendChild( renderer.domElement );
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    document.querySelector('.wrapper').appendChild(renderer.domElement);
 
     mouse = new THREE.Vector2();
     raycaster = new THREE.Raycaster();
@@ -83,8 +86,20 @@ function onPointerStart(event) {
     mouseDownMouseY = clientY;
     mouseDownLon = lon;
     mouseDownLat = lat;
+
+    const intersects = getIntersects(event.layerX, event.layerY);
+    if (intersects.length > 0) {
+        var res = intersects.filter(function (res) {
+            return res && res.object
+        })[0];
+        if (res && res.object) {
+            console.log(res.object)
+        }
+    }
 }
 
+
+var selectedObject = null;
 function onPointerMove(event) {
     if (!mouseDownMouseX) return;
     var clientX = event.clientX;
@@ -92,8 +107,19 @@ function onPointerMove(event) {
     lon = (mouseDownMouseX - clientX) * camera.fov / 600 + mouseDownLon;
     lat = (clientY - mouseDownMouseY) * camera.fov / 600 + mouseDownLat;
 
-    mouse.x = ( event.clientX / window.innerWidth ) * 2 - 1;
-	mouse.y = - ( event.clientY / window.innerHeight ) * 2 + 1;
+    // mouse.x = ( event.clientX / window.innerWidth ) * 2 - 1;
+    // mouse.y = - ( event.clientY / window.innerHeight ) * 2 + 1;
+
+}
+
+function getIntersects(x, y) {
+    x = (x / window.innerWidth) * 2 - 1;
+    y = - (y / window.innerHeight) * 2 + 1;
+
+    mouse.set(x, y, 0.5);
+    raycaster.setFromCamera(mouse, camera);
+
+    return raycaster.intersectObject(arrowGroup, true);
 }
 
 function onPointerUp() {
@@ -127,18 +153,18 @@ function render() {
     camera.target.z = delta * Math.sin(phi) * Math.sin(theta);
     camera.lookAt(camera.target);
 
-    let arrowObject;
-    raycaster.setFromCamera( mouse, camera );
-    var intersects = raycaster.intersectObjects( scene.children, true );
-    if (intersects.length) {
-        intersects.forEach((figure)=>{
-            if (figure.distance<49) {
-                // arrowObject = figure;
-                // figure.object.material.color.set('blue');
-                console.log('хай')
-            }
-        })
-    }
+    // let arrowObject;
+    // raycaster.setFromCamera( mouse, camera );
+    // var intersects = raycaster.intersectObjects( scene.children, true );
+    // if (intersects.length) {
+    //     intersects.forEach((figure)=>{
+    //         if (figure.distance<49) {
+    //             // arrowObject = figure;
+    //             // figure.object.material.color.set('blue');
+    //             console.log('хай')
+    //         }
+    //     })
+    // }
 
     renderer.render(scene, camera);
 }
