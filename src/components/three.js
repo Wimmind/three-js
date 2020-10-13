@@ -13,15 +13,21 @@ export function posCam() {
     camera.position.set( 30, 100, 60 );
 }
 
-function matrixRotateForCoord({x,y,z},angle) {
-
+function rotationMatrix({x,y,z},angle) {
     const cs = Math.cos(angle);
     const sn = Math.sin(angle); 
-    const coef = 2;
     return {
-        x: (x * cs - z * sn)*coef,
+        x: (x * cs - z * sn),
         y: y,
-        z: (x * sn + z * cs)*coef
+        z: (x * sn + z * cs)
+    }
+}
+
+function resizeTriangle (point,x0,z0){
+    const k = 1/4;
+    return {
+        x: x0 + k * (point.x - x0),
+        z: z0 + k * (point.z - z0)
     }
 }
 
@@ -31,7 +37,7 @@ function initArrows(siblings,coords) {
         let arrowGeometry = new THREE.Geometry();
 
         const {x,y,z} = (textures.filter(({id})=>sibling===id)[0].coords);
-        const coef = 4;
+        const coefficient = 5;
         const vec = {
             x: (x - coords.x),
             y: (y - coords.y),
@@ -44,24 +50,28 @@ function initArrows(siblings,coords) {
             z: vec.z/len_vec
         }
 
-        const p1 = matrixRotateForCoord(unit_vec,45)
-        const p2 = matrixRotateForCoord(unit_vec,-45)
+        const leftPoint = rotationMatrix(unit_vec,45,)
+        const rightPoint = rotationMatrix(unit_vec,-45)
+
+        const x0 = (leftPoint.x + unit_vec.x + rightPoint.x) / 3;
+        const z0 = (leftPoint.z + unit_vec.z + rightPoint.z) / 3;
+        
+        const newLeftPoint = resizeTriangle(leftPoint,x0,z0)
+        const newRightPoint = resizeTriangle(rightPoint,x0,z0)
+        const newMiddlePoint = resizeTriangle(unit_vec,x0,z0)
 
         arrowGeometry.vertices.push(
-            new THREE.Vector3(p1.x, -3, p1.z),
-            new THREE.Vector3(unit_vec.x*coef, -3, unit_vec.z*coef),
-            new THREE.Vector3(p2.x, -3, p2.z)
+            new THREE.Vector3(newLeftPoint.x*(coefficient-1), -3, newLeftPoint.z*(coefficient-1)),
+            new THREE.Vector3(newMiddlePoint.x*coefficient, -3, newMiddlePoint.z*coefficient),
+            new THREE.Vector3(newRightPoint.x*(coefficient-1), -3, newRightPoint.z*(coefficient-1))
         );
 
         arrowGeometry.faces.push(new THREE.Face3(0, 1, 2));
 
         arrowGeometry.computeBoundingSphere();
-        let material = new THREE.LineBasicMaterial({ color: 'red', linewidth: 10 });
+        let material = new THREE.LineBasicMaterial({ color: 'red', linewidth: 2 });
         let mesh = new THREE.Mesh(arrowGeometry, material);
         
-        mesh.scale.x = .8;
-       // mesh.scale.y = .8;
-
         arrowGroup.add(mesh);
     });
 

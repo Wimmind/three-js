@@ -8,7 +8,7 @@ import Sphere from './Sphere';
 
 export default class App extends Component {
   state = {
-    currentTexture: 0
+    currentTexture: 3
   }
 
   componentDidMount() {
