@@ -1,75 +1,103 @@
 import * as THREE from 'three';
+import textures from '../data';
 
 let camera, scene, renderer, geometrySphere,
     mouseDownMouseX, mouseDownMouseY, mouseDownLon, mouseDownLat,
     lon = 0, lat = 0, phi = 0, theta = 0;
 
-var mouse, raycaster, arrowGroup, spheresGroup;
+var mouse, raycaster, arrowGroup;
 
-export function moveCam({ x, y, z }) {
-    camera.target = new THREE.Vector3(x, y, z);
+export function posCam() {
+    // camera.target = new THREE.Vector3(1000, 1000, 1000);
+    // camera.lookAt( camera.target );
+    camera.position.set( 30, 100, 60 );
 }
 
-export function posCam(img) {
-    // const texture = new THREE.TextureLoader().load(img);
-    // const material = new THREE.MeshBasicMaterial({map: texture});
-    // scene.add( new THREE.Mesh(geometry, material));
-    console.log(scene.children)
+function matrixRotateForCoord({x,y,z},angle) {
+
+    const cs = Math.cos(angle);
+    const sn = Math.sin(angle); 
+    const coef = 2;
+    return {
+        x: (x * cs - z * sn)*coef,
+        y: y,
+        z: (x * sn + z * cs)*coef
+    }
 }
 
-function initArrow() {
-    let arrowGeometry = new THREE.Geometry();
-
-    arrowGeometry.vertices.push(
-        new THREE.Vector3(0, -3, -7),
-        new THREE.Vector3(-1, -3, -4),
-        new THREE.Vector3(1, -3, -4)
-    );
-
-    arrowGeometry.faces.push(new THREE.Face3(0, 1, 2));
-
-    arrowGeometry.computeBoundingSphere();
-    let material = new THREE.MeshBasicMaterial({ color: 'red', thickness: 10 });
-    let mesh = new THREE.Mesh(arrowGeometry, material);
-
+function initArrows(siblings,coords) {
     arrowGroup = new THREE.Group();
-    arrowGroup.add(mesh);
+    siblings.forEach(sibling=>{
+        let arrowGeometry = new THREE.Geometry();
+
+        const {x,y,z} = (textures.filter(({id})=>sibling===id)[0].coords);
+        const coef = 4;
+        const vec = {
+            x: (x - coords.x),
+            y: (y - coords.y),
+            z: (z - coords.z)
+        }
+        const len_vec = Math.sqrt(vec.x**2+vec.y**2+vec.z**2);
+        const unit_vec = {
+            x: vec.x/len_vec,
+            y: vec.y/len_vec,
+            z: vec.z/len_vec
+        }
+
+        const p1 = matrixRotateForCoord(unit_vec,45)
+        const p2 = matrixRotateForCoord(unit_vec,-45)
+
+        arrowGeometry.vertices.push(
+            new THREE.Vector3(p1.x, -3, p1.z),
+            new THREE.Vector3(unit_vec.x*coef, -3, unit_vec.z*coef),
+            new THREE.Vector3(p2.x, -3, p2.z)
+        );
+
+        arrowGeometry.faces.push(new THREE.Face3(0, 1, 2));
+
+        arrowGeometry.computeBoundingSphere();
+        let material = new THREE.LineBasicMaterial({ color: 'red', linewidth: 10 });
+        let mesh = new THREE.Mesh(arrowGeometry, material);
+        
+        mesh.scale.x = .8;
+       // mesh.scale.y = .8;
+
+        arrowGroup.add(mesh);
+    });
+
     scene.add(arrowGroup);
 }
 
-function initSpheres(textures) {
-    spheresGroup = new THREE.Group();
-    textures.forEach(({src,coords})=>{
-        geometrySphere = new THREE.SphereBufferGeometry(10, 60, 40);
-    
-        geometrySphere.scale(-1, 1, 1);
-    
-        // наложить картинку
-        const img = process.env.PUBLIC_URL + `/textures/${src}`
-        var texture = new THREE.TextureLoader().load(img);
-        var material = new THREE.MeshBasicMaterial({ map: texture });
-        const mesh = new THREE.Mesh(geometrySphere, material);
-        spheresGroup.add(mesh);
-        const {x,y,z} = coords;
-        mesh.position.set(x*20, y*20, z*20);
-    })
-    scene.add(spheresGroup);
+function initSphere(src) {
+    geometrySphere = new THREE.SphereBufferGeometry(10, 60, 40);
+
+    geometrySphere.scale(-1, 1, 1);
+
+    // наложить картинку
+    const img = process.env.PUBLIC_URL + `/textures/${src}`
+    var texture = new THREE.TextureLoader().load(img);
+    var material = new THREE.MeshBasicMaterial({ map: texture });
+    const mesh = new THREE.Mesh(geometrySphere, material);
+
+    scene.add(mesh);
 }
 
-export function init(textures) {
+export function init({id,src,siblings,coords}) {
     // объявить камеру
     camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 1, 1100);
     camera.target = new THREE.Vector3(0, 0, 0);
-    // сцена
+    // объявить сцену
     scene = new THREE.Scene();
 
-    initSpheres(textures)
-    initArrow()
+    initSphere(src)
+    initArrows(siblings,coords)
 
     renderer = new THREE.WebGLRenderer({ antialias: true });
     // убрать размытие
     renderer.setPixelRatio(window.devicePixelRatio);
     renderer.setSize(window.innerWidth, window.innerHeight);
+
+    document.querySelector('.wrapper').innerHTML='';
     document.querySelector('.wrapper').appendChild(renderer.domElement);
 
     mouse = new THREE.Vector2();
@@ -103,7 +131,7 @@ function onPointerStart(event) {
 
     const intersects = getIntersects(event.layerX, event.layerY);
     if (intersects.length > 0) {
-        var res = intersects.filter(function (res) {
+        const res = intersects.filter(function (res) {
             return res && res.object
         })[0];
         if (res && res.object) {
@@ -144,22 +172,20 @@ function onDocumentMouseWheel(event) {
 
 export function animate() {
     requestAnimationFrame(animate);
-    render();
+    update();
 }
 
-function render() {
-    const delta = 0.001;
-    // азимут поворота камеры в градусах, вращаем камеру 
-    lon = Math.max(-360, Math.min(360, lon));
-    // угол места в градусах ограничиваем от -85 до 85
-    lat = Math.max(-85, Math.min(85, lat));
-    // пересчитываем в радианы
-    phi = THREE.Math.degToRad(90 - lat);
-    theta = THREE.Math.degToRad(lon);
-    camera.target.x = delta * Math.sin(phi) * Math.cos(theta);
-    camera.target.y = delta * Math.cos(phi);
-    camera.target.z = delta * Math.sin(phi) * Math.sin(theta);
-    camera.lookAt(camera.target);
+function update() {
+    const delta = 500;
+
+	lat = Math.max( - 85, Math.min( 85, lat ) );
+    phi = THREE.MathUtils.degToRad( 90 - lat );
+    theta = THREE.MathUtils.degToRad( lon );
+
+    camera.target.x = delta * Math.sin( phi ) * Math.cos( theta );
+    camera.target.y = delta * Math.cos( phi );
+    camera.target.z = delta * Math.sin( phi ) * Math.sin( theta );
+    camera.lookAt( camera.target );
 
     renderer.render(scene, camera);
 }

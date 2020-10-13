@@ -1,30 +1,38 @@
 import React, { Component } from 'react';
 import * as threeFunctions from './three';
 
-import textures from '../data'
+import textures from '../data';
+import Sphere from './Sphere';
 
 //const img = 'https://i.imgur.com/GFLxXVV.jpg';
 
 export default class App extends Component {
   state = {
-    num: 0
+    currentTexture: 0
   }
 
   componentDidMount() {
-    threeFunctions.init(textures)
+    const texture = this.state.currentTexture
+    threeFunctions.init(textures[texture])
     threeFunctions.animate();
   }
 
   click = () => {
-   // let num = this.state.num + 20;
-    //const img = process.env.PUBLIC_URL + `/textures/${textures[1].src}`
-    threeFunctions.posCam()
-   // this.setState({num})
+   // threeFunctions.posCam()
+   const next =  this.state.currentTexture+1
+   this.setState({currentTexture: next})
+   threeFunctions.init(textures[next])
+   threeFunctions.animate();
   }
 
   render() {
     return (
-      <div className='wrapper'></div>
+      <div>
+         <div className='wrapper'></div>
+         
+      </div>
     );
   }
 }
+
+/*<button style={{marginTop: '30px'}} onClick={this.click}>skjghskghkghshgskhgjhgdj</button>*/
