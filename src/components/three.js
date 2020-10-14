@@ -1,21 +1,21 @@
 import * as THREE from 'three';
 import textures from '../data';
 
-let camera, scene, renderer, geometrySphere,
+let camera, scene, renderer,
     mouseDownMouseX, mouseDownMouseY, mouseDownLon, mouseDownLat,
     lon = 0, lat = 0, phi = 0, theta = 0;
 
-var mouse, raycaster, arrowGroup;
+let mouse, raycaster, arrowGroup;
 
 export function posCam() {
-    // camera.target = new THREE.Vector3(1000, 1000, 1000);
-    // camera.lookAt( camera.target );
-    camera.position.set( 30, 100, 60 );
+    camera.position.set(30, 100, 60);
+
+    //camera.lookAt(10,10,10);
 }
 
-function rotationMatrix({x,y,z},angle) {
+function rotationMatrix({ x, y, z }, angle) {
     const cs = Math.cos(angle);
-    const sn = Math.sin(angle); 
+    const sn = Math.sin(angle);
     return {
         x: (x * cs - z * sn),
         y: y,
@@ -23,91 +23,95 @@ function rotationMatrix({x,y,z},angle) {
     }
 }
 
-function resizeTriangle (point,x0,z0){
-    const k = 1/4;
+function resizeTriangle(point, x0, z0) {
+    const k = 1 / 4;
     return {
         x: x0 + k * (point.x - x0),
         z: z0 + k * (point.z - z0)
     }
 }
 
-function initArrows(siblings,coords) {
+export function initArrows(siblings, coords) {
     arrowGroup = new THREE.Group();
-    siblings.forEach(sibling=>{
+
+    siblings.forEach(sibling => {
         let arrowGeometry = new THREE.Geometry();
 
-        const {x,y,z} = (textures.filter(({id})=>sibling===id)[0].coords);
+        const { x, y, z } = (textures.filter(({ id }) => sibling === id)[0].coords);
+        const siblingId = (textures.filter(({ id }) => sibling === id)[0].id);
         const coefficient = 5;
         const vec = {
             x: (x - coords.x),
             y: (y - coords.y),
             z: (z - coords.z)
         }
-        const len_vec = Math.sqrt(vec.x**2+vec.y**2+vec.z**2);
+        const len_vec = Math.sqrt(vec.x ** 2 + vec.y ** 2 + vec.z ** 2);
         const unit_vec = {
-            x: vec.x/len_vec,
-            y: vec.y/len_vec,
-            z: vec.z/len_vec
+            x: vec.x / len_vec,
+            y: vec.y / len_vec,
+            z: vec.z / len_vec
         }
 
-        const leftPoint = rotationMatrix(unit_vec,45,)
-        const rightPoint = rotationMatrix(unit_vec,-45)
+        const leftPoint = rotationMatrix(unit_vec, 45,)
+        const rightPoint = rotationMatrix(unit_vec, -45)
 
         const x0 = (leftPoint.x + unit_vec.x + rightPoint.x) / 3;
         const z0 = (leftPoint.z + unit_vec.z + rightPoint.z) / 3;
-        
-        const newLeftPoint = resizeTriangle(leftPoint,x0,z0)
-        const newRightPoint = resizeTriangle(rightPoint,x0,z0)
-        const newMiddlePoint = resizeTriangle(unit_vec,x0,z0)
+
+        const newLeftPoint = resizeTriangle(leftPoint, x0, z0)
+        const newRightPoint = resizeTriangle(rightPoint, x0, z0)
+        const newMiddlePoint = resizeTriangle(unit_vec, x0, z0)
 
         arrowGeometry.vertices.push(
-            new THREE.Vector3(newLeftPoint.x*(coefficient-1), -3, newLeftPoint.z*(coefficient-1)),
-            new THREE.Vector3(newMiddlePoint.x*coefficient, -3, newMiddlePoint.z*coefficient),
-            new THREE.Vector3(newRightPoint.x*(coefficient-1), -3, newRightPoint.z*(coefficient-1))
+            new THREE.Vector3(newLeftPoint.x * (coefficient - 1), -3, newLeftPoint.z * (coefficient - 1)),
+            new THREE.Vector3(newMiddlePoint.x * coefficient, -3, newMiddlePoint.z * coefficient),
+            new THREE.Vector3(newRightPoint.x * (coefficient - 1), -3, newRightPoint.z * (coefficient - 1))
         );
 
         arrowGeometry.faces.push(new THREE.Face3(0, 1, 2));
 
-        arrowGeometry.computeBoundingSphere();
-        let material = new THREE.LineBasicMaterial({ color: 'red', linewidth: 2 });
-        let mesh = new THREE.Mesh(arrowGeometry, material);
-        
+        const material = new THREE.LineBasicMaterial({ color: 'red', linewidth: 2 });
+        const mesh = new THREE.Mesh(arrowGeometry, material);
+        mesh.name = siblingId;
+
         arrowGroup.add(mesh);
     });
 
     scene.add(arrowGroup);
 }
 
-function initSphere(src) {
-    geometrySphere = new THREE.SphereBufferGeometry(10, 60, 40);
+export function initSphere(src, position) {
+    const geometrySphere = new THREE.SphereBufferGeometry(10, 60, 40);
 
     geometrySphere.scale(-1, 1, 1);
 
     // наложить картинку
     const img = process.env.PUBLIC_URL + `/textures/${src}`
-    var texture = new THREE.TextureLoader().load(img);
-    var material = new THREE.MeshBasicMaterial({ map: texture });
+    const texture = new THREE.TextureLoader().load(img);
+    const material = new THREE.MeshBasicMaterial({ map: texture });
     const mesh = new THREE.Mesh(geometrySphere, material);
+
+    if (position) {
+        const { x, y, z } = position;
+        mesh.position.set(x * 30, y, z * 30);
+    }
 
     scene.add(mesh);
 }
 
-export function init({id,src,siblings,coords}) {
+export function init() {
     // объявить камеру
     camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 1, 1100);
     camera.target = new THREE.Vector3(0, 0, 0);
     // объявить сцену
     scene = new THREE.Scene();
 
-    initSphere(src)
-    initArrows(siblings,coords)
-
     renderer = new THREE.WebGLRenderer({ antialias: true });
     // убрать размытие
     renderer.setPixelRatio(window.devicePixelRatio);
     renderer.setSize(window.innerWidth, window.innerHeight);
 
-    document.querySelector('.wrapper').innerHTML='';
+    document.querySelector('.wrapper').innerHTML = '';
     document.querySelector('.wrapper').appendChild(renderer.domElement);
 
     mouse = new THREE.Vector2();
@@ -145,8 +149,9 @@ function onPointerStart(event) {
             return res && res.object
         })[0];
         if (res && res.object) {
-            console.log(res.object)
-            console.log(scene.children)
+            const sibling = textures.filter(({ id }) => id === res.object.name)[0];
+            const { src, coords } = sibling;
+            initSphere(src, coords);
         }
     }
 }
@@ -188,14 +193,14 @@ export function animate() {
 function update() {
     const delta = 500;
 
-	lat = Math.max( - 85, Math.min( 85, lat ) );
-    phi = THREE.MathUtils.degToRad( 90 - lat );
-    theta = THREE.MathUtils.degToRad( lon );
+    lat = Math.max(- 85, Math.min(85, lat));
+    phi = THREE.MathUtils.degToRad(90 - lat);
+    theta = THREE.MathUtils.degToRad(lon);
 
-    camera.target.x = delta * Math.sin( phi ) * Math.cos( theta );
-    camera.target.y = delta * Math.cos( phi );
-    camera.target.z = delta * Math.sin( phi ) * Math.sin( theta );
-    camera.lookAt( camera.target );
+    camera.target.x = delta * Math.sin(phi) * Math.cos(theta);
+    camera.target.y = delta * Math.cos(phi);
+    camera.target.z = delta * Math.sin(phi) * Math.sin(theta);
+    camera.lookAt(camera.target);
 
     renderer.render(scene, camera);
 }
