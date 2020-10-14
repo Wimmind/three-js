@@ -31,7 +31,7 @@ const textures = [
   },
   {
     id: 4,
-    "src": "pano_2_2.png",
+    src: "pano_2_2.png",
     coords: {
       x: 3,
       y: 0,
