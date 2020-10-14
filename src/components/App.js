@@ -4,10 +4,6 @@ import textures from '../data';
 
 import Minimap from './MiniMap';
 
-const state = {
-  currentTexture: 0,
-}
-
 let camera, scene, renderer,
   mouseDownMouseX, mouseDownMouseY, mouseDownLon, mouseDownLat,
   lon = 0, lat = 0, phi = 0, theta = 0;
@@ -18,13 +14,13 @@ let mainSphere, otherSphere;
 
 export default class App extends Component {
   state = {
-    currentTexture: 0,
-    isModalShow: false
+    isModalShow: false,
+    currentId: null
   }
 
   componentDidMount() {
-    const texture = state.currentTexture
-    const { id, src, siblings, coords } = textures[texture];
+    const { id, src, siblings, coords } = textures[0];
+    this.setState({currentId: id})
 
     this.init()
     this.initMainSphere(src, siblings, coords);
@@ -38,7 +34,6 @@ export default class App extends Component {
       }
     })
   }
-
 
   init = () => {
     // объявить камеру
@@ -165,7 +160,6 @@ export default class App extends Component {
       })[0];
       if (res && res.object) {
         const sibling = textures.filter(({ id }) => id === res.object.name)[0];
-        const { x, y, z } = sibling.coords;
         this.switchScene(sibling)
 
       }
@@ -178,7 +172,7 @@ export default class App extends Component {
         scene.remove(scene.children[i]);
       }
     }
-    this.setState({ currentTexture: id - 1 })
+    this.setState({ currentId: id})
 
     const mesh = this.createMesh(mainSphere, src, 'main');
     scene.add(mesh);
@@ -203,11 +197,11 @@ export default class App extends Component {
   }
 
   render() {
-    const { isModalShow, currentTexture } = this.state;
+    const { isModalShow, currentId } = this.state;
     return (
       <div className="wrapper">
         <div className="canvas"></div>
-        <Minimap currentTextureIndex={currentTexture} action={this.showModalMap} />
+        <Minimap currentId={currentId} action={this.showModalMap} />
         <div className={isModalShow ? "fade-block" : "hidden"}>
           <div className="map">
             {textures.map(({ id, coords }, i) => (
@@ -220,7 +214,7 @@ export default class App extends Component {
                   {
                     top: `${coords.z * 25}px`,
                     left: `${coords.x * 25}px`,
-                    backgroundColor: id - 1 === currentTexture ? 'blue' : 'greenyellow'
+                    backgroundColor: id === currentId ? 'blue' : 'greenyellow'
                   }
                 }></span>
             ))}
