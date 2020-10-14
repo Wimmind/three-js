@@ -32,8 +32,8 @@ export default class App extends Component {
 
     animate();
 
-    document.querySelector('.wrapper').addEventListener('click', (e)=>{
-      if (!e.target.classList.contains('map')){
+    document.querySelector('.wrapper').addEventListener('click', (e) => {
+      if (!e.target.classList.contains('map')) {
         this.setState({ isModalShow: false })
       }
     })
@@ -165,8 +165,9 @@ export default class App extends Component {
       })[0];
       if (res && res.object) {
         const sibling = textures.filter(({ id }) => id === res.object.name)[0];
-        // const { src, coords, siblings, id } = sibling;
-        this.switchScene(sibling)
+        const { x, y, z } = sibling.coords;
+        camera.rotation.x = 90*Math.PI/180;
+        //this.switchScene(sibling)
 
       }
     }
@@ -199,7 +200,6 @@ export default class App extends Component {
   }
 
   showModalMap = () => {
-    //camera.position.set(30, 100, 60);
     this.setState({ isModalShow: true })
   }
 
