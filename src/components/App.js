@@ -166,8 +166,7 @@ export default class App extends Component {
       if (res && res.object) {
         const sibling = textures.filter(({ id }) => id === res.object.name)[0];
         const { x, y, z } = sibling.coords;
-        camera.rotation.x = 90*Math.PI/180;
-        //this.switchScene(sibling)
+        this.switchScene(sibling)
 
       }
     }
