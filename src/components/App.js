@@ -1,7 +1,8 @@
 import React, { Component } from 'react';
-import * as threeFunctions from './three';
 import * as THREE from 'three';
 import textures from '../data';
+
+import Minimap from './MiniMap';
 
 const state = {
   currentTexture: 0,
@@ -18,7 +19,7 @@ let mainSphere, otherSphere;
 
 export default class App extends Component {
   state = {
-    //currentTexture: 0
+   
   }
 
   componentDidMount() {
@@ -33,20 +34,21 @@ export default class App extends Component {
   }
 
   click = () => {
-    camera.position.set(30, 100, 60);
+    //camera.position.set(30, 100, 60);
+    console.log(state)
   }
 
   render() {
     return (
       <div>
-        <div className='wrapper'></div>
-        <button style={{ marginTop: '30px' }} onClick={this.click}>skjghskghkghshgskhgjhgdj</button>
+        <div className='canvas'></div>
+        <Minimap currentTextureIndex={state.currentTexture} />
       </div>
     );
   }
 }
 
-/*<button style={{marginTop: '30px'}} onClick={this.click}>skjghskghkghshgskhgjhgdj</button>*/
+// <button onClick={this.click}>skjghskghkghshgskhgjhgdj</button>
 
 function rotationMatrix({ x, y, z }, angle) {
   const cs = Math.cos(angle);
@@ -141,14 +143,6 @@ function createMesh (object,src,name) {
   return mesh;
 }
 
-// function initSphere(sphere, src, position) {
-
-//   if (position) {
-//     const { x, y, z } = position;
-//     mesh.position.set(x * 30, y, z * 30);
-//   }
-// }
-
 function init() {
   // объявить камеру
   camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 1, 1100);
@@ -161,8 +155,8 @@ function init() {
   renderer.setPixelRatio(window.devicePixelRatio);
   renderer.setSize(window.innerWidth, window.innerHeight);
 
-  document.querySelector('.wrapper').innerHTML = '';
-  document.querySelector('.wrapper').appendChild(renderer.domElement);
+  document.querySelector('.canvas').innerHTML = '';
+  document.querySelector('.canvas').appendChild(renderer.domElement);
 
   mouse = new THREE.Vector2();
   raycaster = new THREE.Raycaster();
@@ -200,14 +194,14 @@ function onPointerStart(event) {
       })[0];
       if (res && res.object) {
         const sibling = textures.filter(({ id }) => id === res.object.name)[0];
-        const { src, coords, siblings } = sibling;
+        const { src, coords, siblings, id } = sibling;
 
         for (let i = scene.children.length - 1; i >= 0; i--) {
           if(scene.children[i].name==='main' || scene.children[i].name==='arrowGroup'){
             scene.remove(scene.children[i]);
           }
         }
-
+        state.currentTexture = id-1;
         const mesh = createMesh(mainSphere,src,'main');
         scene.add(mesh);
         initArrows(siblings, coords);
