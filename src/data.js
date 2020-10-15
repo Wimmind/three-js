@@ -11,13 +11,13 @@ const textures = [
   },
   {
     id: 2,
-    src: "pano_2_1.png",
+    src: "pano_4.png",
     coords: {
-      x: 2,
+      x: -5,
       y: 0,
       z: 1
     },
-    siblings: [1,3,4]
+    siblings: [1,3]
   },
   {
     id: 3,
@@ -71,7 +71,7 @@ const textures = [
   },
   {
     id: 8,
-    src: "pano_4.png",
+    src: "pano_2_1.png",
     coords: {
       x: 6,
       y: 0,

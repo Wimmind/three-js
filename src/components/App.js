@@ -165,6 +165,30 @@ export default class App extends Component {
     mouseDownMouseY = clientY;
     mouseDownLon = lon;
     mouseDownLat = lat;
+  }
+
+  switchScene = ({ src, coords, siblings, id }) => {
+    for (let i = scene.children.length - 1; i >= 0; i--) {
+      scene.remove(scene.children[i]);
+    }
+    this.setState({ currentId: id })
+
+    const mesh = this.createMesh(mainSphere, src, 'main');
+    scene.add(mesh);
+    this.initArrows(siblings, coords);
+    this.setState({ isModalShow: false })
+  }
+
+  onPointerMove = (event) => {
+    if (!mouseDownMouseX) return;
+    var clientX = event.clientX;
+    var clientY = event.clientY;
+    lon = (mouseDownMouseX - clientX) * camera.fov / 600 + mouseDownLon;
+    lat = (clientY - mouseDownMouseY) * camera.fov / 600 + mouseDownLat;
+  }
+
+  onPointerUp = (event) => {
+    mouseDownMouseX = null;
 
     const intersects = getIntersects(event.layerX, event.layerY);
     if (intersects.length > 0) {
@@ -207,50 +231,26 @@ export default class App extends Component {
         }
         requestAnimationFrame(animate);
 
-        var tween = new TWEEN.Tween(newCoords)
-          .to({ x: 0, y: 0, z: 0 }, 3000)
+
+    
+        let temp = {...newCoords, opacity: 1, opacity2: 0};
+        console.log(res.object)
+        var tween = new TWEEN.Tween(temp)
+          .to({ x: 0, y: 0, z: 0, opacity: 0, opacity2: 1  }, 3000)
           .onUpdate(() => {
-            meshForOtherSphere.position.set(newCoords.x, newCoords.y, newCoords.z);
-            if (meshForOtherSphere.material.opacity < 1) {
-              meshForOtherSphere.material.opacity += 0.1;
-            }
-            if (meshForMainSphere.material.opacity > 0) {
-              meshForMainSphere.material.opacity -= 0.1;
-            }
+            meshForOtherSphere.position.set(temp.x, temp.y, temp.z);
+            meshForMainSphere.material.opacity = temp.opacity;
+            meshForOtherSphere.material.opacity = temp.opacity2;
           })
           .start()
           .onComplete(() => {
             this.initEvents();
             isSphereAnimation = false;
-            this.switchScene(siblingTexture) 
+            this.switchScene(siblingTexture)
           });
 
       }
     }
-  }
-
-  switchScene = ({ src, coords, siblings, id }) => {
-    for (let i = scene.children.length - 1; i >= 0; i--) {
-      scene.remove(scene.children[i]);
-    }
-    this.setState({ currentId: id })
-
-    const mesh = this.createMesh(mainSphere, src, 'main');
-    scene.add(mesh);
-    this.initArrows(siblings, coords);
-    this.setState({ isModalShow: false })
-  }
-
-  onPointerMove = (event) => {
-    if (!mouseDownMouseX) return;
-    var clientX = event.clientX;
-    var clientY = event.clientY;
-    lon = (mouseDownMouseX - clientX) * camera.fov / 600 + mouseDownLon;
-    lat = (clientY - mouseDownMouseY) * camera.fov / 600 + mouseDownLat;
-  }
-
-  onPointerUp = () => {
-    mouseDownMouseX = null;
   }
 
   showModalMap = () => {
@@ -274,7 +274,7 @@ export default class App extends Component {
                 style={
                   {
                     top: `${coords.z * 25}px`,
-                    left: `${coords.x * 25}px`,
+                    left: `${coords.x * 25+130}px`,
                     backgroundColor: id === currentId ? 'blue' : 'greenyellow'
                   }
                 }></span>
@@ -298,7 +298,7 @@ function rotationMatrix({ x, y, z }, angle) {
 }
 
 function resizeTriangle(point, x0, z0) {
-  const k = 1 / 4;
+  const k = 1 / 5;
   return {
     x: x0 + k * (point.x - x0),
     z: z0 + k * (point.z - z0)
