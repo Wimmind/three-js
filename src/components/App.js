@@ -208,8 +208,7 @@ export default class App extends Component {
         requestAnimationFrame(animate);
 
         var tween = new TWEEN.Tween(newCoords)
-          .to({ x: 0, y: 0, z: 0 }, 5000)
-          .easing(TWEEN.Easing.Quadratic.Out)
+          .to({ x: 0, y: 0, z: 0 }, 3000)
           .onUpdate(() => {
             meshForOtherSphere.position.set(newCoords.x, newCoords.y, newCoords.z);
             if (meshForOtherSphere.material.opacity < 1) {
@@ -221,8 +220,8 @@ export default class App extends Component {
           })
           .start()
           .onComplete(() => {
-            isSphereAnimation = false;
             this.initEvents();
+            isSphereAnimation = false;
             this.switchScene(siblingTexture) 
           });
 
