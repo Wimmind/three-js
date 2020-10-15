@@ -1,8 +1,11 @@
 import React, { Component } from 'react';
 import * as THREE from 'three';
+
 import textures from '../data';
 
 import Minimap from './MiniMap';
+
+import TWEEN from '@tweenjs/tween.js';
 
 let camera, scene, renderer,
   mouseDownMouseX, mouseDownMouseY, mouseDownLon, mouseDownLat,
@@ -10,6 +13,8 @@ let camera, scene, renderer,
 
 let mouse, raycaster, arrowGroup;
 let mainSphere, otherSphere;
+
+let isSphereAnimation = false;
 
 
 export default class App extends Component {
@@ -20,7 +25,7 @@ export default class App extends Component {
 
   componentDidMount() {
     const { id, src, siblings, coords } = textures[0];
-    this.setState({currentId: id})
+    this.setState({ currentId: id })
 
     this.init()
     this.initMainSphere(src, siblings, coords);
@@ -53,6 +58,10 @@ export default class App extends Component {
     mouse = new THREE.Vector2();
     raycaster = new THREE.Raycaster();
 
+    this.initEvents();
+  }
+
+  initEvents = () => {
     const windowEvenets = [
       { action: 'mousedown', evt: this.onPointerStart },
       { action: 'mousemove', evt: this.onPointerMove },
@@ -64,27 +73,29 @@ export default class App extends Component {
     })
   }
 
+  deleteEvents = () => {
+    const windowEvenets = [
+      { action: 'mousedown', evt: this.onPointerStart },
+      { action: 'mousemove', evt: this.onPointerMove },
+      { action: 'mouseup', evt: this.onPointerUp },
+      { action: 'resize', evt: this.onWindowResize }
+    ]
+    windowEvenets.forEach(({ action, evt }) => {
+      document.removeEventListener(action, evt);
+    })
+  }
+
+
   initArrows = (siblings, coords) => {
     arrowGroup = new THREE.Group();
 
     siblings.forEach(sibling => {
       let arrowGeometry = new THREE.Geometry();
 
-      const { x, y, z } = (textures.filter(({ id }) => sibling === id)[0].coords);
+      const siblingCoords = (textures.filter(({ id }) => sibling === id)[0].coords);
       const siblingId = (textures.filter(({ id }) => sibling === id)[0].id);
-      const coefficient = 5;
-      const vec = {
-        x: (x - coords.x),
-        y: (y - coords.y),
-        z: (z - coords.z)
-      }
-      const len_vec = Math.sqrt(vec.x ** 2 + vec.y ** 2 + vec.z ** 2);
-      const unit_vec = {
-        x: vec.x / len_vec,
-        y: vec.y / len_vec,
-        z: vec.z / len_vec
-      }
 
+      const unit_vec = getUnicVector(coords, siblingCoords);
       const leftPoint = rotationMatrix(unit_vec, 45,)
       const rightPoint = rotationMatrix(unit_vec, -45)
 
@@ -95,6 +106,7 @@ export default class App extends Component {
       const newRightPoint = resizeTriangle(rightPoint, x0, z0)
       const newMiddlePoint = resizeTriangle(unit_vec, x0, z0)
 
+      const coefficient = 5;
       arrowGeometry.vertices.push(
         new THREE.Vector3(newLeftPoint.x * (coefficient - 1), -3, newLeftPoint.z * (coefficient - 1)),
         new THREE.Vector3(newMiddlePoint.x * coefficient, -3, newMiddlePoint.z * coefficient),
@@ -145,6 +157,7 @@ export default class App extends Component {
     renderer.setSize(window.innerWidth, window.innerHeight);
   }
 
+  // клики мышью
   onPointerStart = (event) => {
     var clientX = event.clientX || event.touches[0].clientX;
     var clientY = event.clientY || event.touches[0].clientY;
@@ -159,8 +172,59 @@ export default class App extends Component {
         return res && res.object
       })[0];
       if (res && res.object) {
-        const sibling = textures.filter(({ id }) => id === res.object.name)[0];
-        this.switchScene(sibling)
+        const siblingTexture = textures.filter(({ id }) => id === res.object.name)[0];// сиблинг по которому кликнули
+        const currentTexture = textures.filter(({ id }) => id === this.state.currentId)[0];// текущая теккстура
+
+        //const { src, coords } = siblingTexture;
+
+        const unit_vec = getUnicVector(currentTexture.coords, siblingTexture.coords);
+
+        // создать other сферу и расположить ее на 20ед дальше по ппрямой
+        const meshForOtherSphere = this.createMesh(otherSphere, siblingTexture.src, 'other');
+        const coefficient = 20;
+        const newCoords = {
+          x: unit_vec.x * coefficient,
+          y: unit_vec.y * coefficient,
+          z: unit_vec.z * coefficient
+        }
+        meshForOtherSphere.position.set(newCoords.x, newCoords.y, newCoords.z);
+        meshForOtherSphere.material.opacity = 0;
+        scene.add(meshForOtherSphere);
+
+        // вырубить все управление
+        isSphereAnimation = true;
+        this.deleteEvents();
+
+        // поворот камеры
+        camera.lookAt(newCoords.x, 0, newCoords.z);
+
+        //tween анимация
+
+        const meshForMainSphere = scene.children.filter(({ name }) => name === 'main')[0];
+        function animate(time) {
+          requestAnimationFrame(animate);
+          TWEEN.update(time);
+        }
+        requestAnimationFrame(animate);
+
+        var tween = new TWEEN.Tween(newCoords)
+          .to({ x: 0, y: 0, z: 0 }, 5000)
+          .easing(TWEEN.Easing.Quadratic.Out)
+          .onUpdate(() => {
+            meshForOtherSphere.position.set(newCoords.x, newCoords.y, newCoords.z);
+            if (meshForOtherSphere.material.opacity < 1) {
+              meshForOtherSphere.material.opacity += 0.1;
+            }
+            if (meshForMainSphere.material.opacity > 0) {
+              meshForMainSphere.material.opacity -= 0.1;
+            }
+          })
+          .start()
+          .onComplete(() => {
+            isSphereAnimation = false;
+            this.initEvents();
+            this.switchScene(siblingTexture) 
+          });
 
       }
     }
@@ -168,11 +232,9 @@ export default class App extends Component {
 
   switchScene = ({ src, coords, siblings, id }) => {
     for (let i = scene.children.length - 1; i >= 0; i--) {
-      if (scene.children[i].name === 'main' || scene.children[i].name === 'arrowGroup') {
-        scene.remove(scene.children[i]);
-      }
+      scene.remove(scene.children[i]);
     }
-    this.setState({ currentId: id})
+    this.setState({ currentId: id })
 
     const mesh = this.createMesh(mainSphere, src, 'main');
     scene.add(mesh);
@@ -225,7 +287,6 @@ export default class App extends Component {
   }
 }
 
-// <button onClick={this.click}>skjghskghkghshgskhgjhgdj</button>
 
 function rotationMatrix({ x, y, z }, angle) {
   const cs = Math.cos(angle);
@@ -257,10 +318,12 @@ function update() {
   phi = THREE.MathUtils.degToRad(90 - lat);
   theta = THREE.MathUtils.degToRad(lon);
 
-  camera.target.x = delta * Math.sin(phi) * Math.cos(theta);
-  camera.target.y = delta * Math.cos(phi);
-  camera.target.z = delta * Math.sin(phi) * Math.sin(theta);
-  camera.lookAt(camera.target);
+  if (!isSphereAnimation) {
+    camera.target.x = delta * Math.sin(phi) * Math.cos(theta);
+    camera.target.y = delta * Math.cos(phi);
+    camera.target.z = delta * Math.sin(phi) * Math.sin(theta);
+    camera.lookAt(camera.target);
+  }
 
   renderer.render(scene, camera);
 }
@@ -275,4 +338,17 @@ function getIntersects(x, y) {
   return raycaster.intersectObject(arrowGroup, true);
 }
 
+function getUnicVector(currentCoords, siblingCoords) {
+  const vec = {
+    x: (siblingCoords.x - currentCoords.x),
+    y: (siblingCoords.y - currentCoords.y),
+    z: (siblingCoords.z - currentCoords.z)
+  }
+  const len_vec = Math.sqrt(vec.x ** 2 + vec.y ** 2 + vec.z ** 2);
+  return {
+    x: vec.x / len_vec,
+    y: vec.y / len_vec,
+    z: vec.z / len_vec
+  }
+}
 
