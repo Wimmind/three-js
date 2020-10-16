@@ -147,15 +147,6 @@ export default class App extends Component {
     return geometrySphere;
   }
 
-  createMesh = (object, src, name) => {
-    const img = process.env.PUBLIC_URL + `/textures/${src}`
-    const texture = new THREE.TextureLoader().load(img);
-    const material = new THREE.MeshBasicMaterial({ map: texture });
-    const mesh = new THREE.Mesh(object, material);
-    mesh.name = name;
-    return mesh;
-  }
-
   onWindowResize = () => {
     camera.aspect = window.innerWidth / window.innerHeight;
     camera.updateProjectionMatrix();
