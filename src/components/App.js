@@ -12,7 +12,7 @@ let camera, scene, renderer,
   lon = 0, lat = 0, phi = 0, theta = 0;
 
 let mouse, raycaster, arrowGroup;
-let mainSphere, otherSphere,materialMainSphere;
+let mainSphere, otherSphere;
 
 let isSphereAnimation = false;
 
@@ -30,7 +30,7 @@ export default class App extends Component {
     this.initBaseControls()
     this.initMainSphere(src, siblings, coords);
     this.initOtherSphere()
-
+    this.initArrows(siblings, coords);
     animate();
 
     document.querySelector('.wrapper').addEventListener('click', (e) => {
@@ -124,21 +124,21 @@ export default class App extends Component {
 
   initMainSphere = (src, siblings, coords) => {
     const sphere = this.initSphere();
-
     const img = `/textures/${src}`;
     const texture = new THREE.TextureLoader().load(img);
-
-    materialMainSphere = new THREE.MeshBasicMaterial({ map: texture });
-    mainSphere = new THREE.Mesh(sphere, materialMainSphere);
-
+    const material = new THREE.MeshBasicMaterial({ map: texture, transparent: true, opacity: 1 });
+    mainSphere = new THREE.Mesh(sphere, material);
     mainSphere.name = 'main';
     scene.add(mainSphere);
-    this.initArrows(siblings, coords);
-    console.log(mainSphere.material.map)
   }
 
   initOtherSphere = () => {
-    otherSphere = this.initSphere();
+    const sphere = this.initSphere();
+    const material = new THREE.MeshBasicMaterial({ transparent: true, opacity: 0 });
+    otherSphere = new THREE.Mesh(sphere, material);
+    otherSphere.name = 'other';
+    otherSphere.position.set(0, -10000, 0);
+    scene.add(otherSphere);
   }
 
   initSphere = () => {
@@ -173,19 +173,16 @@ export default class App extends Component {
 
   switchScene = ({ src, coords, siblings, id }) => {
     for (let i = scene.children.length - 1; i >= 0; i--) {
-      if (scene.children[i].name === 'arrowGroup' || scene.children[i].name === 'other' )
-      scene.remove(scene.children[i]);
+      if (scene.children[i].name === 'arrowGroup')
+        scene.remove(scene.children[i]);
     }
     this.setState({ currentId: id })
 
     const img = `/textures/${src}`;
-
     const texture = new THREE.TextureLoader().load(img);
     mainSphere.material.map = texture;
     mainSphere.material.needsUpdate = true;
 
-    
-    console.log(mainSphere.material.map)
     this.initArrows(siblings, coords);
     this.setState({ isModalShow: false })
   }
@@ -210,21 +207,22 @@ export default class App extends Component {
         const siblingTexture = textures.filter(({ id }) => id === res.object.name)[0];// сиблинг по которому кликнули
         const currentTexture = textures.filter(({ id }) => id === this.state.currentId)[0];// текущая теккстура
 
-        //const { src, coords } = siblingTexture;
-
         const unit_vec = getUnicVector(currentTexture.coords, siblingTexture.coords);
 
         // создать other сферу и расположить ее на 20ед дальше по ппрямой
-        const meshForOtherSphere = this.createMesh(otherSphere, siblingTexture.src, 'other');
         const coefficient = 20;
         const newCoords = {
           x: unit_vec.x * coefficient,
           y: unit_vec.y * coefficient,
           z: unit_vec.z * coefficient
         }
-        meshForOtherSphere.position.set(newCoords.x, newCoords.y, newCoords.z);
-        meshForOtherSphere.material.opacity = 0;
-        scene.add(meshForOtherSphere);
+
+        const img = `/textures/${siblingTexture.src}`;
+        const texture = new THREE.TextureLoader().load(img);
+        otherSphere.material.map = texture;
+        otherSphere.material.needsUpdate = true;
+
+        otherSphere.position.set(newCoords.x, newCoords.y, newCoords.z);
 
         // вырубить все управление
         isSphereAnimation = true;
@@ -234,11 +232,6 @@ export default class App extends Component {
         camera.lookAt(newCoords.x, 0, newCoords.z);
 
         //tween анимация
-
-        const meshForMainSphere = scene.children.filter(({ name }) => name === 'main')[0];
-        meshForMainSphere.material.transparent = true;
-        meshForOtherSphere.material.transparent = true;
-
         function animate(time) {
           requestAnimationFrame(animate);
           TWEEN.update(time);
@@ -250,12 +243,16 @@ export default class App extends Component {
         var tween = new TWEEN.Tween(temp)
           .to({ x: 0, y: 0, z: 0, opacity: 0, opacity2: 1 }, 3000)
           .onUpdate(() => {
-            meshForOtherSphere.position.set(temp.x, temp.y, temp.z);
-            meshForMainSphere.material.opacity = temp.opacity;
-            meshForOtherSphere.material.opacity = temp.opacity2;
+            otherSphere.position.set(temp.x, temp.y, temp.z);
+            mainSphere.material.opacity = temp.opacity;
+            otherSphere.material.opacity = temp.opacity2;
           })
           .start()
           .onComplete(() => {
+            mainSphere.material.opacity = 1;
+            otherSphere.material.opacity = 0;
+            otherSphere.position.set(0,-10000,0);
+
             this.initEvents();
             isSphereAnimation = false;
             this.switchScene(siblingTexture)
@@ -297,7 +294,6 @@ export default class App extends Component {
     );
   }
 }
-
 
 function rotationMatrix({ x, y, z }, angle) {
   const cs = Math.cos(angle);
