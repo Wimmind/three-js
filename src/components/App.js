@@ -12,7 +12,7 @@ let camera, scene, renderer,
   lon = 0, lat = 0, phi = 0, theta = 0;
 
 let mouse, raycaster, arrowGroup;
-let mainSphere, otherSphere;
+let mainSphere, otherSphere,materialMainSphere;
 
 let isSphereAnimation = false;
 
@@ -27,7 +27,7 @@ export default class App extends Component {
     const { id, src, siblings, coords } = textures[0];
     this.setState({ currentId: id })
 
-    this.init()
+    this.initBaseControls()
     this.initMainSphere(src, siblings, coords);
     this.initOtherSphere()
 
@@ -40,7 +40,7 @@ export default class App extends Component {
     })
   }
 
-  init = () => {
+  initBaseControls = () => {
     // объявить камеру
     camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 1, 1100);
     camera.target = new THREE.Vector3(0, 0, 0);
@@ -52,7 +52,6 @@ export default class App extends Component {
     renderer.setPixelRatio(window.devicePixelRatio);
     renderer.setSize(window.innerWidth, window.innerHeight);
 
-    document.querySelector('.canvas').innerHTML = '';
     document.querySelector('.canvas').appendChild(renderer.domElement);
 
     mouse = new THREE.Vector2();
@@ -85,17 +84,16 @@ export default class App extends Component {
     })
   }
 
-
-  initArrows = (siblings, coords) => {
+  initArrows = (siblings, currentCoords) => {
     arrowGroup = new THREE.Group();
 
     siblings.forEach(sibling => {
-      let arrowGeometry = new THREE.Geometry();
+      const arrowGeometry = new THREE.Geometry();
 
-      const siblingCoords = (textures.filter(({ id }) => sibling === id)[0].coords);
-      const siblingId = (textures.filter(({ id }) => sibling === id)[0].id);
+      const currentSibling = (textures.filter(({ id }) => sibling === id)[0]);
+      const { id, coords } = currentSibling;
 
-      const unit_vec = getUnicVector(coords, siblingCoords);
+      const unit_vec = getUnicVector(currentCoords, coords);
       const leftPoint = rotationMatrix(unit_vec, 45,)
       const rightPoint = rotationMatrix(unit_vec, -45)
 
@@ -112,12 +110,11 @@ export default class App extends Component {
         new THREE.Vector3(newMiddlePoint.x * coefficient, -3, newMiddlePoint.z * coefficient),
         new THREE.Vector3(newRightPoint.x * (coefficient - 1), -3, newRightPoint.z * (coefficient - 1))
       );
-
       arrowGeometry.faces.push(new THREE.Face3(0, 1, 2));
 
       const material = new THREE.LineBasicMaterial({ color: 'red', linewidth: 2 });
       const mesh = new THREE.Mesh(arrowGeometry, material);
-      mesh.name = siblingId;
+      mesh.name = id;
 
       arrowGroup.add(mesh);
     });
@@ -126,10 +123,18 @@ export default class App extends Component {
   }
 
   initMainSphere = (src, siblings, coords) => {
-    mainSphere = this.initSphere();
-    const mesh = this.createMesh(mainSphere, src, 'main');
-    scene.add(mesh);
+    const sphere = this.initSphere();
+
+    const img = `/textures/${src}`;
+    const texture = new THREE.TextureLoader().load(img);
+
+    materialMainSphere = new THREE.MeshBasicMaterial({ map: texture });
+    mainSphere = new THREE.Mesh(sphere, materialMainSphere);
+
+    mainSphere.name = 'main';
+    scene.add(mainSphere);
     this.initArrows(siblings, coords);
+    console.log(mainSphere.material.map)
   }
 
   initOtherSphere = () => {
@@ -157,7 +162,6 @@ export default class App extends Component {
     renderer.setSize(window.innerWidth, window.innerHeight);
   }
 
-  // клики мышью
   onPointerStart = (event) => {
     var clientX = event.clientX || event.touches[0].clientX;
     var clientY = event.clientY || event.touches[0].clientY;
@@ -169,12 +173,19 @@ export default class App extends Component {
 
   switchScene = ({ src, coords, siblings, id }) => {
     for (let i = scene.children.length - 1; i >= 0; i--) {
+      if (scene.children[i].name === 'arrowGroup' || scene.children[i].name === 'other' )
       scene.remove(scene.children[i]);
     }
     this.setState({ currentId: id })
 
-    const mesh = this.createMesh(mainSphere, src, 'main');
-    scene.add(mesh);
+    const img = `/textures/${src}`;
+
+    const texture = new THREE.TextureLoader().load(img);
+    mainSphere.material.map = texture;
+    mainSphere.material.needsUpdate = true;
+
+    
+    console.log(mainSphere.material.map)
     this.initArrows(siblings, coords);
     this.setState({ isModalShow: false })
   }
@@ -225,18 +236,19 @@ export default class App extends Component {
         //tween анимация
 
         const meshForMainSphere = scene.children.filter(({ name }) => name === 'main')[0];
+        meshForMainSphere.material.transparent = true;
+        meshForOtherSphere.material.transparent = true;
+
         function animate(time) {
           requestAnimationFrame(animate);
           TWEEN.update(time);
         }
         requestAnimationFrame(animate);
 
+        let temp = { ...newCoords, opacity: 1, opacity2: 0 };
 
-    
-        let temp = {...newCoords, opacity: 1, opacity2: 0};
-        console.log(res.object)
         var tween = new TWEEN.Tween(temp)
-          .to({ x: 0, y: 0, z: 0, opacity: 0, opacity2: 1  }, 3000)
+          .to({ x: 0, y: 0, z: 0, opacity: 0, opacity2: 1 }, 3000)
           .onUpdate(() => {
             meshForOtherSphere.position.set(temp.x, temp.y, temp.z);
             meshForMainSphere.material.opacity = temp.opacity;
@@ -274,7 +286,7 @@ export default class App extends Component {
                 style={
                   {
                     top: `${coords.z * 25}px`,
-                    left: `${coords.x * 25+130}px`,
+                    left: `${coords.x * 25 + 130}px`,
                     backgroundColor: id === currentId ? 'blue' : 'greenyellow'
                   }
                 }></span>
