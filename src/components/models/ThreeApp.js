@@ -1,41 +1,27 @@
-import * as THREE from 'three';
-import textures from '../data';
-import TWEEN from '@tweenjs/tween.js';
+import * as THREE from "three";
+import textures from "../../data";
+import TWEEN from "@tweenjs/tween.js";
 
 export default class ThreeApp {
   constructor() {
-    
-  };
 
-  camera;
-  scene;
-  renderer;
-  mouse;
-  raycaster;
-  mouseDownMouseX;
-  mouseDownMouseY;
-  mouseDownLon;
-  mouseDownLat;
+  }
+
   lon = 0;
   lat = 0;
   phi = 0;
   theta = 0;
 
-  arrowGroup;
-  mainSphere;
-  otherSphere;
   isSphereAnimation = false;
-
-  windowEvenets = [
-    { action: 'mousedown', evt: this.onPointerStart },
-    { action: 'mousemove', evt: this.onPointerMove },
-    { action: 'mouseup', evt: this.onPointerUp },
-    { action: 'resize', evt: this.onWindowResize }
-  ]
 
   initBaseControls = () => {
     // объявить камеру
-    this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 1, 1100);
+    this.camera = new THREE.PerspectiveCamera(
+      75,
+      window.innerWidth / window.innerHeight,
+      1,
+      1100
+    );
     this.camera.target = new THREE.Vector3(0, 0, 0);
     // объявить сцену
     this.scene = new THREE.Scene();
@@ -45,25 +31,43 @@ export default class ThreeApp {
     this.renderer.setPixelRatio(window.devicePixelRatio);
     this.renderer.setSize(window.innerWidth, window.innerHeight);
 
-    document.querySelector('.canvas').appendChild(renderer.domElement);
+    document.querySelector(".canvas").appendChild(this.renderer.domElement);
 
     this.mouse = new THREE.Vector2();
     this.raycaster = new THREE.Raycaster();
 
     this.initEvents();
-  }
+  };
 
   initEvents = () => {
-    this.windowEvenets.forEach(({ action, evt }) => {
+    const windowEvents = [
+      { action: "mousedown", evt: this.onPointerStart },
+      { action: "mousemove", evt: this.onPointerMove },
+      { action: "mouseup", evt: this.onPointerUp },
+      { action: "resize", evt: this.onWindowResize },
+    ];
+    windowEvents.forEach(({ action, evt }) => {
       document.addEventListener(action, evt);
+    });
+  };
+
+  deleteEvents = () => {
+    const windowEvenets = [
+      { action: 'mousedown', evt: this.onPointerStart },
+      { action: 'mousemove', evt: this.onPointerMove },
+      { action: 'mouseup', evt: this.onPointerUp },
+      { action: 'resize', evt: this.onWindowResize }
+    ]
+    windowEvenets.forEach(({ action, evt }) => {
+      document.removeEventListener(action, evt);
     })
   }
 
   deleteEvents = () => {
-    this.windowEvenets.forEach(({ action, evt }) => {
+    this.windowEvents.forEach(({ action, evt }) => {
       document.removeEventListener(action, evt);
-    })
-  }
+    });
+  };
 
   onPointerStart = (event) => {
     const clientX = event.clientX || event.touches[0].clientX;
@@ -72,37 +76,48 @@ export default class ThreeApp {
     this.mouseDownMouseY = clientY;
     this.mouseDownLon = this.lon;
     this.mouseDownLat = this.lat;
-  }
+  };
 
   onPointerMove = (event) => {
-    if (!mouseDownMouseX) return;
+    if (!this.mouseDownMouseX) return;
     const clientX = event.clientX;
     const clientY = event.clientY;
-    this.lon = (this.mouseDownMouseX - clientX) * camera.fov / 600 + this.mouseDownLon;
-    this.lat = (clientY - this.mouseDownMouseY) * camera.fov / 600 + this.mouseDownLat;
-  }
+    this.lon =
+      ((this.mouseDownMouseX - clientX) * this.camera.fov) / 600 +
+      this.mouseDownLon;
+    this.lat =
+      ((clientY - this.mouseDownMouseY) * this.camera.fov) / 600 +
+      this.mouseDownLat;
+  };
 
   onPointerUp = (event) => {
     this.mouseDownMouseX = null;
 
-    const intersects = getIntersects(event.layerX, event.layerY);
+    const intersects = this.getIntersects(event.layerX, event.layerY);
     if (intersects.length > 0) {
       const res = intersects.filter(function (res) {
-        return res && res.object
+        return res && res.object;
       })[0];
       if (res && res.object) {
-        const siblingTexture = textures.filter(({ id }) => id === res.object.name)[0];// сиблинг по которому кликнули
-        const currentTexture = textures.filter(({ id }) => id === this.state.currentId)[0];// текущая теккстура
+        const siblingTexture = textures.filter(
+          ({ id }) => id === res.object.name
+        )[0]; // сиблинг по которому кликнули
+        const currentTexture = textures.filter(
+          ({ id }) => id === this.state.currentId
+        )[0]; // текущая теккстура
 
-        const unit_vec = this.getUnicVector(currentTexture.coords, siblingTexture.coords);
+        const unit_vec = this.getUnicVector(
+          currentTexture.coords,
+          siblingTexture.coords
+        );
 
         // создать other сферу и расположить ее на 20ед дальше по ппрямой
         const coefficient = 20;
         const newCoords = {
           x: unit_vec.x * coefficient,
           y: unit_vec.y * coefficient,
-          z: unit_vec.z * coefficient
-        }
+          z: unit_vec.z * coefficient,
+        };
 
         const img = `/textures/${siblingTexture.src}`;
         const texture = new THREE.TextureLoader().load(img);
@@ -125,9 +140,10 @@ export default class ThreeApp {
         }
         requestAnimationFrame(animate);
 
-        let temp = { ...newCoords, opacity: 1, opacity2: 0 };
 
-        var tween = new TWEEN.Tween(temp)
+        const temp = { ...newCoords, opacity: 1, opacity2: 0 };
+
+        let tween = new TWEEN.Tween(temp)
           .to({ x: 0, y: 0, z: 0, opacity: 0, opacity2: 1 }, 3000)
           .onUpdate(() => {
             this.otherSphere.position.set(temp.x, temp.y, temp.z);
@@ -138,27 +154,26 @@ export default class ThreeApp {
           .onComplete(() => {
             this.mainSphere.material.opacity = 1;
             this.otherSphere.material.opacity = 0;
-            this.otherSphere.position.set(0, -10000, 0);
+            this.otherSphere.position.set(0,-10000,0);
 
             this.initEvents();
             this.isSphereAnimation = false;
             this.switchScene(siblingTexture)
           });
-
       }
     }
-  }
+  };
 
   onWindowResize = () => {
     this.camera.aspect = window.innerWidth / window.innerHeight;
     this.camera.updateProjectionMatrix();
     this.renderer.setSize(window.innerWidth, window.innerHeight);
-  }
+  };
 
   switchScene = ({ src, coords, siblings, id }) => {
     for (let i = this.scene.children.length - 1; i >= 0; i--) {
-      if (this.scene.children[i].name === 'arrowGroup'){
-        this.scene.remove(scene.children[i]);
+      if (this.scene.children[i].name === "arrowGroup") {
+        this.scene.remove(this.scene.children[i]);
       }
     }
 
@@ -172,19 +187,41 @@ export default class ThreeApp {
 
     this.initArrows(siblings, coords);
     //this.setState({ isModalShow: false });   !!!!!!!!
-  }
+  };
 
   getIntersects = (x, y) => {
     x = (x / window.innerWidth) * 2 - 1;
-    y = - (y / window.innerHeight) * 2 + 1;
+    y = -(y / window.innerHeight) * 2 + 1;
 
     this.mouse.set(x, y, 0.5);
     this.raycaster.setFromCamera(this.mouse, this.camera);
 
-    return raycaster.intersectObject(this.arrowGroup, true);
+    return this.raycaster.intersectObject(this.arrowGroup, true);
+  };
+
+  animate = () => {
+    requestAnimationFrame(this.animate);
+    this.update();
+  };
+
+  update = () => {
+    const delta = 500;
+
+    this.lat = Math.max(-85, Math.min(85, this.lat));
+    this.phi = THREE.MathUtils.degToRad(90 - this.lat);
+    this.theta = THREE.MathUtils.degToRad(this.lon);
+
+    if (!this.isSphereAnimation) {
+      this.camera.target.x = delta * Math.sin(this.phi) * Math.cos(this.theta);
+      this.camera.target.y = delta * Math.cos(this.phi);
+      this.camera.target.z = delta * Math.sin(this.phi) * Math.sin(this.theta);
+      this.camera.lookAt(this.camera.target);
+    }
+
+    this.renderer.render(this.scene, this.camera);
+  };
+
+  addObject = (object) => {
+    this.scene.add(object);
   }
-
-
-
 }
-
