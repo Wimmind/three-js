@@ -111,7 +111,6 @@ export default class ThreeApp {
         );
         
         this.otherSphere.setTexture(texture);
-
         this.otherSphere.changePosition(newCoords.x, newCoords.y, newCoords.z);
 
         // вырубить все управление
@@ -120,7 +119,7 @@ export default class ThreeApp {
 
         // поворот камеры
         this.camera.lookAt(newCoords.x, 0, newCoords.z);
-
+        console.log(this.camera)
         //tween анимация
         function animate(time) {
           requestAnimationFrame(animate);
@@ -144,7 +143,7 @@ export default class ThreeApp {
 
             this.initEvents();
             this.isSphereAnimation = false;
-            this.switchScene(siblingTexture);
+            this.switchEnvironment(siblingTexture);
           });
       }
     }
@@ -177,7 +176,7 @@ export default class ThreeApp {
     this.scene.add(this.arrowGroup.arrowGroup);
   };
 
-  switchScene = ({ src, coords, siblings, id }) => {
+  switchEnvironment = ({ src, coords, siblings, id }) => {
     for (let i = this.scene.children.length - 1; i >= 0; i--) {
       if (this.scene.children[i].name === "arrowGroup") {
         this.scene.remove(this.scene.children[i]);
