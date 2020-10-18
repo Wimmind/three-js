@@ -2,11 +2,10 @@ import * as THREE from "three";
 import textures from "../../data";
 import TWEEN from "@tweenjs/tween.js";
 
+import Sphere from "./Sphere";
+import Arrows from "./Arrows";
+import * as helpers from "../../helperFunctions";
 export default class ThreeApp {
-  constructor() {
-
-  }
-
   lon = 0;
   lat = 0;
   phi = 0;
@@ -14,7 +13,7 @@ export default class ThreeApp {
 
   isSphereAnimation = false;
 
-  initBaseControls = () => {
+  initBaseControls = (reactComponent) => {
     // объявить камеру
     this.camera = new THREE.PerspectiveCamera(
       75,
@@ -37,13 +36,15 @@ export default class ThreeApp {
     this.raycaster = new THREE.Raycaster();
 
     this.initEvents();
+
+    this.reactComponent = reactComponent;
   };
 
   initEvents = () => {
     const windowEvents = [
       { action: "mousedown", evt: this.onPointerStart },
       { action: "mousemove", evt: this.onPointerMove },
-      { action: "mouseup", evt: this.onPointerUp },
+      { action: "mouseup", evt: this.onCursorUp },
       { action: "resize", evt: this.onWindowResize },
     ];
     windowEvents.forEach(({ action, evt }) => {
@@ -53,18 +54,12 @@ export default class ThreeApp {
 
   deleteEvents = () => {
     const windowEvenets = [
-      { action: 'mousedown', evt: this.onPointerStart },
-      { action: 'mousemove', evt: this.onPointerMove },
-      { action: 'mouseup', evt: this.onPointerUp },
-      { action: 'resize', evt: this.onWindowResize }
-    ]
+      { action: "mousedown", evt: this.onPointerStart },
+      { action: "mousemove", evt: this.onPointerMove },
+      { action: "mouseup", evt: this.onCursorUp },
+      { action: "resize", evt: this.onWindowResize },
+    ];
     windowEvenets.forEach(({ action, evt }) => {
-      document.removeEventListener(action, evt);
-    })
-  }
-
-  deleteEvents = () => {
-    this.windowEvents.forEach(({ action, evt }) => {
       document.removeEventListener(action, evt);
     });
   };
@@ -82,36 +77,28 @@ export default class ThreeApp {
     if (!this.mouseDownMouseX) return;
     const clientX = event.clientX;
     const clientY = event.clientY;
-    this.lon =
-      ((this.mouseDownMouseX - clientX) * this.camera.fov) / 600 +
-      this.mouseDownLon;
-    this.lat =
-      ((clientY - this.mouseDownMouseY) * this.camera.fov) / 600 +
-      this.mouseDownLat;
+    this.lon = ((this.mouseDownMouseX - clientX) * this.camera.fov) / 600 + this.mouseDownLon;
+    this.lat = ((clientY - this.mouseDownMouseY) * this.camera.fov) / 600 + this.mouseDownLat;
   };
 
-  onPointerUp = (event) => {
+  onCursorUp = (event) => {
     this.mouseDownMouseX = null;
 
     const intersects = this.getIntersects(event.layerX, event.layerY);
-    if (intersects.length > 0) {
-      const res = intersects.filter(function (res) {
-        return res && res.object;
-      })[0];
-      if (res && res.object) {
-        const siblingTexture = textures.filter(
-          ({ id }) => id === res.object.name
-        )[0]; // сиблинг по которому кликнули
-        const currentTexture = textures.filter(
-          ({ id }) => id === this.state.currentId
-        )[0]; // текущая теккстура
 
-        const unit_vec = this.getUnicVector(
+    if (intersects.length > 0) {
+      const res = intersects.filter( res => { return res && res.object; })[0];
+
+      if (res && res.object) { 
+        const siblingTexture = textures.filter(({ id }) => id === res.object.name)[0]; // сиблинг по которому кликнули
+        const currentTexture = textures.filter(({ id }) => id === this.currentId)[0]; // текущая текстура
+
+        const unit_vec = helpers.getUnicVector(
           currentTexture.coords,
           siblingTexture.coords
         );
 
-        // создать other сферу и расположить ее на 20ед дальше по ппрямой
+        // создать other сферу и расположить ее на 20ед дальше по прямой
         const coefficient = 20;
         const newCoords = {
           x: unit_vec.x * coefficient,
@@ -119,12 +106,13 @@ export default class ThreeApp {
           z: unit_vec.z * coefficient,
         };
 
-        const img = `/textures/${siblingTexture.src}`;
-        const texture = new THREE.TextureLoader().load(img);
-        this.otherSphere.material.map = texture;
-        this.otherSphere.material.needsUpdate = true;
+        const texture = new THREE.TextureLoader().load(
+          `/textures/${siblingTexture.src}`
+        );
+        
+        this.otherSphere.setTexture(texture);
 
-        this.otherSphere.position.set(newCoords.x, newCoords.y, newCoords.z);
+        this.otherSphere.changePosition(newCoords.x, newCoords.y, newCoords.z);
 
         // вырубить все управление
         this.isSphereAnimation = true;
@@ -140,25 +128,23 @@ export default class ThreeApp {
         }
         requestAnimationFrame(animate);
 
-
         const temp = { ...newCoords, opacity: 1, opacity2: 0 };
-
         let tween = new TWEEN.Tween(temp)
           .to({ x: 0, y: 0, z: 0, opacity: 0, opacity2: 1 }, 3000)
           .onUpdate(() => {
-            this.otherSphere.position.set(temp.x, temp.y, temp.z);
-            this.mainSphere.material.opacity = temp.opacity;
-            this.otherSphere.material.opacity = temp.opacity2;
+            this.otherSphere.changePosition(temp.x, temp.y, temp.z);
+            this.mainSphere.changeOpacity(temp.opacity)
+            this.otherSphere.changeOpacity(temp.opacity2)
           })
           .start()
           .onComplete(() => {
-            this.mainSphere.material.opacity = 1;
-            this.otherSphere.material.opacity = 0;
-            this.otherSphere.position.set(0,-10000,0);
+            this.mainSphere.changeOpacity(1);
+            this.otherSphere.changeOpacity(0);
+            this.otherSphere.changePosition(0, -10000, 0);
 
             this.initEvents();
             this.isSphereAnimation = false;
-            this.switchScene(siblingTexture)
+            this.switchScene(siblingTexture);
           });
       }
     }
@@ -170,6 +156,27 @@ export default class ThreeApp {
     this.renderer.setSize(window.innerWidth, window.innerHeight);
   };
 
+  createMainSphere = (params) => {
+    const sphere = new Sphere("main");
+    sphere.createMesh(params);
+    this.mainSphere = sphere;
+    this.scene.add(this.mainSphere.sphere);
+  };
+
+  createOtherSphere = (params) => {
+    const sphere = new Sphere("other");
+    sphere.createMesh(params);
+    this.otherSphere = sphere;
+    this.scene.add(this.otherSphere.sphere);
+  };
+
+  createArrows = (siblings, coords) => {
+    const arrows = new Arrows("arrowGroup");
+    arrows.init(siblings, coords);
+    this.arrowGroup = arrows;
+    this.scene.add(this.arrowGroup.arrowGroup);
+  };
+
   switchScene = ({ src, coords, siblings, id }) => {
     for (let i = this.scene.children.length - 1; i >= 0; i--) {
       if (this.scene.children[i].name === "arrowGroup") {
@@ -177,16 +184,14 @@ export default class ThreeApp {
       }
     }
 
-    //this.setState({ currentId: id }); !!!!!!!!!
+    this.reactComponent.updateId(id);
 
-    const img = `/textures/${src}`;
-    const texture = new THREE.TextureLoader().load(img);
+    this.currentId = id;
+    const texture = new THREE.TextureLoader().load(`/textures/${src}`);
+    this.mainSphere.setTexture(texture);
 
-    this.mainSphere.material.map = texture;
-    this.mainSphere.material.needsUpdate = true;
-
-    this.initArrows(siblings, coords);
-    //this.setState({ isModalShow: false });   !!!!!!!!
+    this.createArrows(siblings, coords);
+    this.reactComponent.closeModalMap()
   };
 
   getIntersects = (x, y) => {
@@ -196,7 +201,7 @@ export default class ThreeApp {
     this.mouse.set(x, y, 0.5);
     this.raycaster.setFromCamera(this.mouse, this.camera);
 
-    return this.raycaster.intersectObject(this.arrowGroup, true);
+    return this.raycaster.intersectObject(this.arrowGroup.arrowGroup, true);
   };
 
   animate = () => {
@@ -223,5 +228,5 @@ export default class ThreeApp {
 
   addObject = (object) => {
     this.scene.add(object);
-  }
+  };
 }

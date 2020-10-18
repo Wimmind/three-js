@@ -1,6 +1,5 @@
 import * as THREE from 'three';
 import textures from '../../data';
-import TWEEN from '@tweenjs/tween.js';
 
 import * as helpers from '../../helperFunctions';
 
