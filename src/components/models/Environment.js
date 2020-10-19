@@ -23,7 +23,6 @@ export default class Environment {
 
   init = () => {
     this.currentLocation = new Location(this.textures[0],this.reactComponent);
-
     const { id, coords, siblings, src } = this.currentLocation;
 
     this.reactComponent.updateId(id);
@@ -64,7 +63,6 @@ export default class Environment {
   
       this.createArrows(siblings, coords)
     })
-    
   };
 
   initEvents = () => {
@@ -119,15 +117,13 @@ export default class Environment {
             siblingTexture.coords
           );
           // создать other сферу и расположить ее на 10ед дальше по прямой
-          const coefficient = 10;
+          const coefficient = 8;
           const newCoords = {
             x: unit_vec.x * coefficient,
             y: unit_vec.y * coefficient,
             z: unit_vec.z * coefficient,
           };
          
-          // const loader = new THREE.TextureLoader();
-
           // вырубить все управление
           this.isSphereAnimation = true;
           // поворот камеры
@@ -136,13 +132,6 @@ export default class Environment {
           this.currentLocation.loadSiblingsTexture(`/textures/${siblingTexture.src}`,()=>{
             this.otherSphere.setTexture(this.currentLocation.siblingTexture);
             this.otherSphere.changePosition(newCoords.x, newCoords.y, newCoords.z);
-
-            //tween анимация
-            function animate(time) {
-              requestAnimationFrame(animate);
-              TWEEN.update(time);
-            }
-            requestAnimationFrame(animate);
 
             const temp = { ...newCoords, opacity: 1, opacity2: 0 };
             let tween = new TWEEN.Tween(temp)
@@ -162,7 +151,6 @@ export default class Environment {
                 this.switchEnvironment(siblingTexture, false);
               });
           })
-          
           
         }
       }
@@ -225,9 +213,10 @@ export default class Environment {
     return this.raycaster.intersectObject(this.arrowGroup.arrowGroup, true);
   };
 
-  animate = () => {
+  animate = (time) => {
     requestAnimationFrame(this.animate);
     this.update();
+    TWEEN.update(time);
   };
 
   update = () => {
