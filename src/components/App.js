@@ -49,7 +49,7 @@ export default class App extends Component {
   }
 
   switchScene = (texture) => {
-    this.myScene.switchEnvironment(texture);
+    this.myScene.switchEnvironment(texture,true);
   }
 
   showModalMap = () => {
