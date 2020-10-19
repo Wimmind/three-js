@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import textures from '../data';
 import Minimap from './MiniMap';
 
-import ThereApp from './models/ThreeApp'
+import Environment from './models/Environment'
 
 export default class App extends Component {
   state = {
@@ -12,30 +12,11 @@ export default class App extends Component {
     isLoadImage: false
   }
 
-  myScene = new ThereApp();
+  myEnvironment = new Environment(this,textures);
 
   componentDidMount() {
-    const { id, src, siblings, coords } = textures[0];
-    this.setState({ currentId: id })
-
-    this.myScene.currentId = id;
-
-    this.myScene.initBaseControls(this);
-
-    this.myScene.createMainSphere({
-      map: new THREE.TextureLoader().load(`/textures/${src}`),
-      transparent: true,
-      opacity: 1
-    });
-
-    this.myScene.createOtherSphere({
-      transparent: true,
-      opacity: 0
-    });
-
-    this.myScene.createArrows(siblings, coords)
-
-    this.myScene.animate();
+    this.myEnvironment.init();
+    this.myEnvironment.animate();
 
     document.querySelector('.wrapper').addEventListener('click', (e) => {
       if (!e.target.classList.contains('map')) {
@@ -49,7 +30,7 @@ export default class App extends Component {
   }
 
   switchScene = (texture) => {
-    this.myScene.switchEnvironment(texture,true);
+    this.myEnvironment.switchEnvironment(texture,true);
   }
 
   showModalMap = () => {
@@ -72,14 +53,12 @@ export default class App extends Component {
     const { isModalShow, currentId, isLoadImage } = this.state;
     return (
       <div className="wrapper">
-
         <div className={isLoadImage ? "fade-block" : "hidden"}>
           <div className="spin-wrapper">
             <div className="spinner">
             </div>
           </div>
         </div>
-
         <div className="canvas"></div>
         <Minimap currentId={currentId} action={this.showModalMap} />
         <div className={isModalShow ? "fade-block" : "hidden"}>

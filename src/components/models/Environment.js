@@ -1,11 +1,18 @@
 import * as THREE from "three";
-import textures from "../../data";
+//import textures from "../../data";
 import TWEEN from "@tweenjs/tween.js";
 
 import Sphere from "./Sphere";
 import Arrows from "./Arrows";
+import Location from "./Location";
+
 import * as helpers from "../../helperFunctions";
-export default class ThreeApp {
+export default class Environment {
+  constructor(reactComponent, textures) {
+    this.textures = textures;
+    this.reactComponent = reactComponent;
+  }
+
   lon = 0;
   lat = 0;
   phi = 0;
@@ -13,7 +20,13 @@ export default class ThreeApp {
 
   isSphereAnimation = false;
 
-  initBaseControls = (reactComponent) => {
+  init = () => {
+    this.currentLocation = new Location(this.textures[0],this.reactComponent);
+
+    const { id, coords, siblings, src } = this.currentLocation;
+
+    this.reactComponent.updateId(id);
+
     // объявить камеру
     this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 1, 1100);
     this.camera.target = new THREE.Vector3(0, 0, 0);
@@ -31,11 +44,26 @@ export default class ThreeApp {
     // координаты мыши
     this.mouse = new THREE.Vector2();
 
-    // "слушатель"
+    // "лазер"
     this.raycaster = new THREE.Raycaster();
 
     this.initEvents();
-    this.reactComponent = reactComponent;
+
+    this.currentLocation.loadTexture(()=>{
+      this.createMainSphere({
+        map: this.currentLocation.texture,
+        transparent: true,
+        opacity: 1
+      });
+  
+      this.createOtherSphere({
+        transparent: true,
+        opacity: 0
+      });
+  
+      this.createArrows(siblings, coords)
+    })
+    
   };
 
   initEvents = () => {
@@ -81,33 +109,35 @@ export default class ThreeApp {
         const res = intersects.filter(res => { return res && res.object; })[0];
 
         if (res && res.object) {
-          const siblingTexture = textures.filter(({ id }) => id === res.object.name)[0]; // сиблинг по которому кликнули
-          const currentTexture = textures.filter(({ id }) => id === this.currentId)[0]; // текущая текстура
-
+          
+          const siblingTexture = this.textures.filter(({ id }) => id === res.object.name)[0]; // сиблинг по которому кликнули
+          const currentTexture = this.currentLocation; // текущая текстура
+          console.log(currentTexture.coords)
+          console.log(siblingTexture.coords)
+          // единичный вектор
           const unit_vec = helpers.getUnicVector(
             currentTexture.coords,
             siblingTexture.coords
           );
-
-          // создать other сферу и расположить ее на 20ед дальше по прямой
-          const coefficient = 20;
+          console.log(unit_vec)
+          // создать other сферу и расположить ее на 10ед дальше по прямой
+          const coefficient = 10;
           const newCoords = {
             x: unit_vec.x * coefficient,
             y: unit_vec.y * coefficient,
             z: unit_vec.z * coefficient,
           };
-
-          const loader = new THREE.TextureLoader();
+         
+          // const loader = new THREE.TextureLoader();
 
           // вырубить все управление
           this.isSphereAnimation = true;
           // поворот камеры
           this.camera.lookAt(newCoords.x, 0, newCoords.z);
 
-          this.reactComponent.startLoadImage()
-          loader.load(`/textures/${siblingTexture.src}`, texture => {
-            this.reactComponent.endLoadImage()
-            this.otherSphere.setTexture(texture);
+
+          this.currentLocation.loadSiblingsTexture(`/textures/${siblingTexture.src}`,()=>{
+            this.otherSphere.setTexture(this.currentLocation.siblingTexture);
             this.otherSphere.changePosition(newCoords.x, newCoords.y, newCoords.z);
 
             //tween анимация
@@ -132,9 +162,12 @@ export default class ThreeApp {
                 this.otherSphere.changePosition(0, -10000, 0);
 
                 this.isSphereAnimation = false;
-                this.switchEnvironment(siblingTexture,false);
+                this.switchEnvironment(siblingTexture, false);
               });
-          });
+          })
+          
+  
+          
         }
       }
     }
@@ -169,27 +202,33 @@ export default class ThreeApp {
     this.scene.add(this.arrowGroup.arrowGroup);
   };
 
-  switchEnvironment = ({ src, coords, siblings, id },cash) => {
+  switchEnvironment = (location, cash) => {
     for (let i = this.scene.children.length - 1; i >= 0; i--) {
       if (this.scene.children[i].name === "arrowGroup") {
         this.scene.remove(this.scene.children[i]);
       }
     }
-    const loader = new THREE.TextureLoader();
-    if (cash) {
-      this.reactComponent.startLoadImage()
-    }
 
-    loader.load(`/textures/${src}`, texture => {
-      if (cash) {
-        this.reactComponent.endLoadImage()
-      }
-      this.reactComponent.updateId(id);
-      this.currentId = id;
-      this.mainSphere.setTexture(texture);
-      this.createArrows(siblings, coords);
+    this.currentLocation.switchLocation(location)
+    const { id, coords, siblings, src } = this.currentLocation;
+    this.reactComponent.updateId(id);
+
+    this.currentLocation.loadTexture(()=>{
+      this.createMainSphere({
+        map: this.currentLocation.texture,
+        transparent: true,
+        opacity: 1
+      });
+  
+      this.createOtherSphere({
+        transparent: true,
+        opacity: 0
+      });
+  
+      this.createArrows(siblings, coords)
       this.reactComponent.closeModalMap()
-    });
+    })
+
   };
 
   getIntersects = (x, y) => {
