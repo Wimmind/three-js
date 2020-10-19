@@ -21,49 +21,41 @@ export default class Environment {
 
   isSphereAnimation = false;
 
-  init = () => {
-    this.currentLocation = new Location(this.textures[0],this.reactComponent);
-    const { id, coords, siblings, src } = this.currentLocation;
-
-    this.reactComponent.updateId(id);
-
-    // объявить камеру
+  init = async () => {
     this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 1, 1100);
     this.camera.target = new THREE.Vector3(0, 0, 0);
-
-    // объявить сцену
     this.scene = new THREE.Scene();
-
-    // движок
     this.renderer = new THREE.WebGLRenderer({ antialias: true });
     this.renderer.setPixelRatio(window.devicePixelRatio);
     this.renderer.setSize(window.innerWidth, window.innerHeight);
-
     document.querySelector(".canvas").appendChild(this.renderer.domElement);
-
-    // координаты мыши
     this.mouse = new THREE.Vector2();
-
-    // "лазер"
     this.raycaster = new THREE.Raycaster();
-
     this.initEvents();
 
-    this.currentLocation.loadTexture(()=>{
-      this.createMainSphere({
-        map: this.currentLocation.texture,
-        transparent: true,
-        opacity: 1
-      });
-  
-      this.createOtherSphere({
-        transparent: true,
-        opacity: 0
-      });
-  
-      this.createArrows(siblings, coords)
-    })
+    this.currentLocation = new Location(this.textures[0], this.reactComponent);
+    const { id, coords, siblings, src } = this.currentLocation;
+    this.reactComponent.updateId(id);
+
+    await this.currentLocation.loadTexture();
+    
+    console.log('2')
+    this.mainSphere = new Sphere("main", {
+      map: this.currentLocation.texture,
+      transparent: true,
+      opacity: 1
+    });
+
+    this.otherSphere = new Sphere("other", {
+      transparent: true,
+      opacity: 0
+    });
+
+    this.otherSphere.changePosition(0, -10000, 0);
+    this.createArrows(siblings, coords)
+    this.scene.add(this.mainSphere.mesh, this.otherSphere.mesh);
   };
+
 
   initEvents = () => {
     const windowEvents = [
@@ -108,7 +100,7 @@ export default class Environment {
         const res = intersects.filter(res => { return res && res.object; })[0];
 
         if (res && res.object) {
-          
+
           const siblingTexture = this.textures.filter(({ id }) => id === res.object.name)[0]; // сиблинг по которому кликнули
           const currentTexture = this.currentLocation; // текущая текстура
           // единичный вектор
@@ -123,13 +115,13 @@ export default class Environment {
             y: unit_vec.y * coefficient,
             z: unit_vec.z * coefficient,
           };
-         
+
           // вырубить все управление
           this.isSphereAnimation = true;
           // поворот камеры
           this.camera.lookAt(newCoords.x, 0, newCoords.z);
 
-          this.currentLocation.loadSiblingsTexture(`/textures/${siblingTexture.src}`,()=>{
+          this.currentLocation.loadSiblingsTexture(`/textures/${siblingTexture.src}`, () => {
             this.otherSphere.setTexture(this.currentLocation.siblingTexture);
             this.otherSphere.changePosition(newCoords.x, newCoords.y, newCoords.z);
 
@@ -151,7 +143,7 @@ export default class Environment {
                 this.switchEnvironment(siblingTexture, false);
               });
           })
-          
+
         }
       }
     }
@@ -163,20 +155,6 @@ export default class Environment {
       this.camera.updateProjectionMatrix();
       this.renderer.setSize(window.innerWidth, window.innerHeight);
     }
-  };
-
-  createMainSphere = (params) => {
-    const sphere = new Sphere("main");
-    sphere.createMesh(params);
-    this.mainSphere = sphere;
-    this.scene.add(this.mainSphere.sphere);
-  };
-
-  createOtherSphere = (params) => {
-    const sphere = new Sphere("other");
-    sphere.createMesh(params);
-    this.otherSphere = sphere;
-    this.scene.add(this.otherSphere.sphere);
   };
 
   createArrows = (siblings, coords) => {
@@ -195,11 +173,11 @@ export default class Environment {
     this.currentLocation.switchTexture(location);
     const { id, coords, siblings, src } = this.currentLocation;
 
-    this.currentLocation.loadTexture(()=>{
-        this.reactComponent.updateId(id);
-        this.mainSphere.setTexture(this.currentLocation.texture);
-        this.createArrows(siblings, coords);
-        this.reactComponent.closeModalMap()
+    this.currentLocation.loadTexture(() => {
+      this.reactComponent.updateId(id);
+      this.mainSphere.setTexture(this.currentLocation.texture);
+      this.createArrows(siblings, coords);
+      this.reactComponent.closeModalMap()
     })
   };
 

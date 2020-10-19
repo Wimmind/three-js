@@ -11,12 +11,12 @@ export default class Location {
   }
   loader = new THREE.TextureLoader();
 
-  loadTexture = (callback=()=>{}) => {
+  loadTexture = async () => {
     this.reactComponent.startLoadImage()
     this.loader.load(`/textures/${this.src}`, texture => {
       this.reactComponent.endLoadImage()
       this.texture = texture;
-      callback();
+      console.log('1')
     })
   }
 
