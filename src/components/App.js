@@ -8,7 +8,8 @@ import ThereApp from './models/ThreeApp'
 export default class App extends Component {
   state = {
     isModalShow: false,
-    currentId: null
+    currentId: null,
+    isLoadImage: false
   }
 
   myScene = new ThereApp();
@@ -20,7 +21,7 @@ export default class App extends Component {
     this.myScene.currentId = id;
 
     this.myScene.initBaseControls(this);
-  
+
     this.myScene.createMainSphere({
       map: new THREE.TextureLoader().load(`/textures/${src}`),
       transparent: true,
@@ -28,11 +29,11 @@ export default class App extends Component {
     });
 
     this.myScene.createOtherSphere({
-      transparent: true, 
-      opacity: 0 
+      transparent: true,
+      opacity: 0
     });
 
-    this.myScene.createArrows(siblings,coords)
+    this.myScene.createArrows(siblings, coords)
 
     this.myScene.animate();
 
@@ -43,7 +44,7 @@ export default class App extends Component {
     })
   }
 
-  updateId = (id) =>{
+  updateId = (id) => {
     this.setState({ currentId: id })
   }
 
@@ -59,10 +60,26 @@ export default class App extends Component {
     this.setState({ isModalShow: false })
   }
 
+  startLoadImage = () => {
+    this.setState({ isLoadImage: true })
+  }
+
+  endLoadImage = () => {
+    this.setState({ isLoadImage: false })
+  }
+
   render() {
-    const { isModalShow, currentId } = this.state;
+    const { isModalShow, currentId, isLoadImage } = this.state;
     return (
       <div className="wrapper">
+
+        <div className={isLoadImage ? "fade-block" : "hidden"}>
+          <div className="spin-wrapper">
+            <div className="spinner">
+            </div>
+          </div>
+        </div>
+
         <div className="canvas"></div>
         <Minimap currentId={currentId} action={this.showModalMap} />
         <div className={isModalShow ? "fade-block" : "hidden"}>
