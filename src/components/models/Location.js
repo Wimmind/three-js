@@ -20,7 +20,7 @@ export default class Location {
     })
   }
 
-  switchLocation = ({id,siblings,coords,src}) => {
+  switchTexture = ({id,siblings,coords,src}) => {
     this.id = id;
     this.siblings = siblings;
     this.coords = coords;

@@ -11,6 +11,7 @@ export default class Environment {
   constructor(reactComponent, textures) {
     this.textures = textures;
     this.reactComponent = reactComponent;
+    this.locations = [];
   }
 
   lon = 0;
@@ -112,14 +113,11 @@ export default class Environment {
           
           const siblingTexture = this.textures.filter(({ id }) => id === res.object.name)[0]; // сиблинг по которому кликнули
           const currentTexture = this.currentLocation; // текущая текстура
-          console.log(currentTexture.coords)
-          console.log(siblingTexture.coords)
           // единичный вектор
           const unit_vec = helpers.getUnicVector(
             currentTexture.coords,
             siblingTexture.coords
           );
-          console.log(unit_vec)
           // создать other сферу и расположить ее на 10ед дальше по прямой
           const coefficient = 10;
           const newCoords = {
@@ -134,7 +132,6 @@ export default class Environment {
           this.isSphereAnimation = true;
           // поворот камеры
           this.camera.lookAt(newCoords.x, 0, newCoords.z);
-
 
           this.currentLocation.loadSiblingsTexture(`/textures/${siblingTexture.src}`,()=>{
             this.otherSphere.setTexture(this.currentLocation.siblingTexture);
@@ -166,7 +163,6 @@ export default class Environment {
               });
           })
           
-  
           
         }
       }
@@ -208,27 +204,15 @@ export default class Environment {
         this.scene.remove(this.scene.children[i]);
       }
     }
-
-    this.currentLocation.switchLocation(location)
+    this.currentLocation.switchTexture(location);
     const { id, coords, siblings, src } = this.currentLocation;
-    this.reactComponent.updateId(id);
 
     this.currentLocation.loadTexture(()=>{
-      this.createMainSphere({
-        map: this.currentLocation.texture,
-        transparent: true,
-        opacity: 1
-      });
-  
-      this.createOtherSphere({
-        transparent: true,
-        opacity: 0
-      });
-  
-      this.createArrows(siblings, coords)
-      this.reactComponent.closeModalMap()
+        this.reactComponent.updateId(id);
+        this.mainSphere.setTexture(this.currentLocation.texture);
+        this.createArrows(siblings, coords);
+        this.reactComponent.closeModalMap()
     })
-
   };
 
   getIntersects = (x, y) => {
