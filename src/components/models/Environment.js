@@ -39,6 +39,14 @@ export default class Environment {
 
     const location = new Location(id,src, this.reactComponent,this);
     const texture = await location.loadTexture(id,true);
+    this.locations.push({id,texture})
+
+    siblings.forEach(async sibling=>{
+      const src = this.textures.filter(({id})=>sibling===id)[0].src;
+      const location = new Location(sibling,src, this.reactComponent,this);
+      const texture = await location.loadTexture(sibling,false);
+      this.locations.push({id:sibling,texture})
+    })
 
     this.mainSphere = new Sphere("main", {
       map: texture,
@@ -55,9 +63,8 @@ export default class Environment {
     this.createArrows(siblings, coords)
     this.scene.add(this.mainSphere.mesh, this.otherSphere.mesh);
 
-    siblings.forEach(async curId=>{
-      await location.loadTexture(curId,false);
-    });
+    
+    
     console.log(this.locations)
   };
 
@@ -193,9 +200,12 @@ export default class Environment {
     this.createArrows(siblings, coords);
     this.reactComponent.closeModalMap();
 
-    siblings.forEach(async curId=>{
-     await location.loadTexture(curId,false);
-    });
+    siblings.forEach(async sibling=>{
+      const src = this.textures.filter(({id})=>sibling===id)[0].src;
+      const location = new Location(sibling,src, this.reactComponent,this);
+      const texture = await location.loadTexture(sibling,false);
+      this.locations.push({id:sibling,texture})
+    })
   };
 
   getIntersects = (x, y) => {

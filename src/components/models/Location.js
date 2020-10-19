@@ -29,7 +29,6 @@ export default class Location {
             this.reactComponent.endLoadImage()
           }
           this.texture = texture;
-          this.APP.locations.push({id,texture})
           resolve(texture)
         })
       })
