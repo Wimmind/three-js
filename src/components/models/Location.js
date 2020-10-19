@@ -2,37 +2,38 @@ import * as THREE from "three";
 import textures from "../../data";
 
 export default class Location {
-  constructor({id,siblings,coords,src},reactComponent) {
+  constructor(id,src, reactComponent, APP) {
     this.id = id;
-    this.siblings = siblings;
-    this.coords = coords;
     this.src = src;
     this.reactComponent = reactComponent;
+    this.APP = APP;
   }
   loader = new THREE.TextureLoader();
 
-  loadTexture = async () => {
-    this.reactComponent.startLoadImage()
-    this.loader.load(`/textures/${this.src}`, texture => {
-      this.reactComponent.endLoadImage()
-      this.texture = texture;
-      console.log('1')
-    })
+  isContains(arr, curID) {
+    return arr.find(({id}) => id === curID);
+  } 
+
+  loadTexture = async (id,isSpinner) => {
+    const location = this.isContains(this.APP.locations,id);
+    console.log(location)
+    if (location){
+      return location;
+    } else {
+      return new Promise(resolve => {
+        if (isSpinner){
+          this.reactComponent.startLoadImage()
+        }
+        this.loader.load(`/textures/${this.src}`, texture => {
+          if (isSpinner){
+            this.reactComponent.endLoadImage()
+          }
+          this.texture = texture;
+          this.APP.locations.push({id,texture})
+          resolve(texture)
+        })
+      })
+    }
   }
 
-  switchTexture = ({id,siblings,coords,src}) => {
-    this.id = id;
-    this.siblings = siblings;
-    this.coords = coords;
-    this.src = src;
-  }
-
-  loadSiblingsTexture = (img,callback=()=>{}) => {
-    this.reactComponent.startLoadImage()
-    this.loader.load(img, texture => {
-      this.reactComponent.endLoadImage()
-      this.siblingTexture = texture;
-      callback();
-    })
-  }
 }

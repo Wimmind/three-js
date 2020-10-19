@@ -33,15 +33,15 @@ export default class Environment {
     this.raycaster = new THREE.Raycaster();
     this.initEvents();
 
-    this.currentLocation = new Location(this.textures[0], this.reactComponent);
-    const { id, coords, siblings, src } = this.currentLocation;
+    const { id, coords, siblings, src } = this.textures[0];
+    this.currentId = id;
     this.reactComponent.updateId(id);
 
-    await this.currentLocation.loadTexture();
-    
-    console.log('2')
+    const location = new Location(id,src, this.reactComponent,this);
+    const texture = await location.loadTexture(id,true);
+
     this.mainSphere = new Sphere("main", {
-      map: this.currentLocation.texture,
+      map: texture,
       transparent: true,
       opacity: 1
     });
@@ -54,6 +54,11 @@ export default class Environment {
     this.otherSphere.changePosition(0, -10000, 0);
     this.createArrows(siblings, coords)
     this.scene.add(this.mainSphere.mesh, this.otherSphere.mesh);
+
+    siblings.forEach(async curId=>{
+      await location.loadTexture(curId,false);
+    });
+    console.log(this.locations)
   };
 
 
@@ -90,7 +95,7 @@ export default class Environment {
     }
   };
 
-  onCursorUp = (event) => {
+  onCursorUp = async (event) => {
     if (!this.isSphereAnimation) {
       this.mouseDownMouseX = null;
 
@@ -102,7 +107,8 @@ export default class Environment {
         if (res && res.object) {
 
           const siblingTexture = this.textures.filter(({ id }) => id === res.object.name)[0]; // сиблинг по которому кликнули
-          const currentTexture = this.currentLocation; // текущая текстура
+          const currentTexture = this.textures.filter(({ id }) => id === this.currentId)[0]; // текущая текстура
+
           // единичный вектор
           const unit_vec = helpers.getUnicVector(
             currentTexture.coords,
@@ -121,28 +127,32 @@ export default class Environment {
           // поворот камеры
           this.camera.lookAt(newCoords.x, 0, newCoords.z);
 
-          this.currentLocation.loadSiblingsTexture(`/textures/${siblingTexture.src}`, () => {
-            this.otherSphere.setTexture(this.currentLocation.siblingTexture);
-            this.otherSphere.changePosition(newCoords.x, newCoords.y, newCoords.z);
+          const { id, coords, siblings, src } = siblingTexture;
 
-            const temp = { ...newCoords, opacity: 1, opacity2: 0 };
-            let tween = new TWEEN.Tween(temp)
-              .to({ x: 0, y: 0, z: 0, opacity: 0, opacity2: 1 }, 3000)
-              .onUpdate(() => {
-                this.otherSphere.changePosition(temp.x, temp.y, temp.z);
-                this.mainSphere.changeOpacity(temp.opacity)
-                this.otherSphere.changeOpacity(temp.opacity2)
-              })
-              .start()
-              .onComplete(() => {
-                this.mainSphere.changeOpacity(1);
-                this.otherSphere.changeOpacity(0);
-                this.otherSphere.changePosition(0, -10000, 0);
+          const location = new Location(id,src, this.reactComponent,this);
+          const texture = await location.loadTexture(id,true);
 
-                this.isSphereAnimation = false;
-                this.switchEnvironment(siblingTexture, false);
-              });
-          })
+          console.log(texture)
+          this.otherSphere.setTexture(texture);
+          this.otherSphere.changePosition(newCoords.x, newCoords.y, newCoords.z);
+
+          const temp = { ...newCoords, opacity: 1, opacity2: 0 };
+          let tween = new TWEEN.Tween(temp)
+            .to({ x: 0, y: 0, z: 0, opacity: 0, opacity2: 1 }, 3000)
+            .onUpdate(() => {
+              this.otherSphere.changePosition(temp.x, temp.y, temp.z);
+              this.mainSphere.changeOpacity(temp.opacity)
+              this.otherSphere.changeOpacity(temp.opacity2)
+            })
+            .start()
+            .onComplete(() => {
+              this.mainSphere.changeOpacity(1);
+              this.otherSphere.changeOpacity(0);
+              this.otherSphere.changePosition(0, -10000, 0);
+
+              this.isSphereAnimation = false;
+              this.switchEnvironment(siblingTexture, false);
+            });
 
         }
       }
@@ -164,21 +174,28 @@ export default class Environment {
     this.scene.add(this.arrowGroup.arrowGroup);
   };
 
-  switchEnvironment = (location, cash) => {
+  switchEnvironment = async (sibling) => {
     for (let i = this.scene.children.length - 1; i >= 0; i--) {
       if (this.scene.children[i].name === "arrowGroup") {
         this.scene.remove(this.scene.children[i]);
       }
     }
-    this.currentLocation.switchTexture(location);
-    const { id, coords, siblings, src } = this.currentLocation;
 
-    this.currentLocation.loadTexture(() => {
-      this.reactComponent.updateId(id);
-      this.mainSphere.setTexture(this.currentLocation.texture);
-      this.createArrows(siblings, coords);
-      this.reactComponent.closeModalMap()
-    })
+    const { id, coords, siblings, src } = sibling;
+    this.currentId = id;
+    this.reactComponent.updateId(id);
+
+    const location = new Location(id,src, this.reactComponent,this);
+
+    const texture = await location.loadTexture(id,false);
+    this.mainSphere.setTexture(texture);
+    
+    this.createArrows(siblings, coords);
+    this.reactComponent.closeModalMap();
+
+    siblings.forEach(async curId=>{
+     await location.loadTexture(curId,false);
+    });
   };
 
   getIntersects = (x, y) => {
