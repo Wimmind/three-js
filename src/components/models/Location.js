@@ -10,29 +10,18 @@ export default class Location {
   }
   loader = new THREE.TextureLoader();
 
-  isContains(arr, curID) {
-    return arr.find(({id}) => id === curID);
-  } 
-
-  loadTexture = async (id,isSpinner) => {
-    const location = this.isContains(this.APP.locations,id);
-    console.log(location)
-    if (location){
-      return location;
-    } else {
-      return new Promise(resolve => {
+  loadTexture = async (isSpinner) => {
+    return new Promise(resolve => {
+      if (isSpinner){
+        this.reactComponent.startLoadImage()
+      }
+      this.loader.load(`/textures/${this.src}`, texture => {
         if (isSpinner){
-          this.reactComponent.startLoadImage()
+          this.reactComponent.endLoadImage()
         }
-        this.loader.load(`/textures/${this.src}`, texture => {
-          if (isSpinner){
-            this.reactComponent.endLoadImage()
-          }
-          this.texture = texture;
-          resolve(texture)
-        })
+        this.texture = texture;
+        resolve({id: this.id,texture})
       })
-    }
+    })
   }
-
 }

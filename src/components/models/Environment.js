@@ -8,10 +8,10 @@ import Location from "./Location";
 
 import * as helpers from "../../helperFunctions";
 export default class Environment {
-  constructor(reactComponent, textures) {
-    this.textures = textures;
+  constructor(reactComponent, data) {
+    this.data = data;
     this.reactComponent = reactComponent;
-    this.locations = [];
+    this.textures = [];
   }
 
   lon = 0;
@@ -22,7 +22,7 @@ export default class Environment {
   isSphereAnimation = false;
 
   init = async () => {
-    this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 1, 1100);
+    this.camera = new THREE.PerspectiveCamera(75,window.innerWidth / window.innerHeight,1,1100);
     this.camera.target = new THREE.Vector3(0, 0, 0);
     this.scene = new THREE.Scene();
     this.renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -33,41 +33,55 @@ export default class Environment {
     this.raycaster = new THREE.Raycaster();
     this.initEvents();
 
-    const { id, coords, siblings, src } = this.textures[0];
+    const { id, coords, siblings, src } = this.data[0];
     this.currentId = id;
     this.reactComponent.updateId(id);
 
-    const location = new Location(id,src, this.reactComponent,this);
-    const texture = await location.loadTexture(id,true);
-    this.locations.push({id,texture})
+    const texture = await this.loadTexture(id, src, true);
 
-    siblings.forEach(async sibling=>{
-      const src = this.textures.filter(({id})=>sibling===id)[0].src;
-      const location = new Location(sibling,src, this.reactComponent,this);
-      const texture = await location.loadTexture(sibling,false);
-      this.locations.push({id:sibling,texture})
-    })
+    siblings.forEach(async (sibling) => {
+      const srcSibling = this.data.filter(({ id }) => sibling === id)[0].src;
+      await this.loadTexture(sibling, srcSibling, false);
+    });
 
     this.mainSphere = new Sphere("main", {
       map: texture,
       transparent: true,
-      opacity: 1
+      opacity: 1,
     });
 
     this.otherSphere = new Sphere("other", {
       transparent: true,
-      opacity: 0
+      opacity: 0,
     });
-
     this.otherSphere.changePosition(0, -10000, 0);
-    this.createArrows(siblings, coords)
-    this.scene.add(this.mainSphere.mesh, this.otherSphere.mesh);
 
-    
-    
-    console.log(this.locations)
+    this.createArrows(siblings, coords);
+
+    this.scene.add(this.mainSphere.mesh, this.otherSphere.mesh);
   };
 
+  loadTexture = async (id, src, isSpinner) => {
+    const objectTexture = this.textures.find((location) => location.id === id);
+    if (objectTexture) {
+      return objectTexture.texture;
+    } else {
+      const loader = new THREE.TextureLoader();
+      return new Promise((resolve) => {
+        if (isSpinner) {
+          this.reactComponent.startLoadImage();
+        }
+        loader.load(`/textures/${src}`, (texture) => {
+          if (isSpinner) {
+            this.reactComponent.endLoadImage();
+          }
+          this.textures.push({ id, texture })
+          resolve(texture);
+          console.log(this.textures);
+        });
+      });
+    }
+  };
 
   initEvents = () => {
     const windowEvents = [
@@ -97,8 +111,12 @@ export default class Environment {
       if (!this.mouseDownMouseX) return;
       const clientX = event.clientX;
       const clientY = event.clientY;
-      this.lon = ((this.mouseDownMouseX - clientX) * this.camera.fov) / 600 + this.mouseDownLon;
-      this.lat = ((clientY - this.mouseDownMouseY) * this.camera.fov) / 600 + this.mouseDownLat;
+      this.lon =
+        ((this.mouseDownMouseX - clientX) * this.camera.fov) / 600 +
+        this.mouseDownLon;
+      this.lat =
+        ((clientY - this.mouseDownMouseY) * this.camera.fov) / 600 +
+        this.mouseDownLat;
     }
   };
 
@@ -109,17 +127,22 @@ export default class Environment {
       const intersects = this.getIntersects(event.layerX, event.layerY);
 
       if (intersects.length > 0) {
-        const res = intersects.filter(res => { return res && res.object; })[0];
+        const res = intersects.filter((res) => {
+          return res && res.object;
+        })[0];
 
         if (res && res.object) {
-
-          const siblingTexture = this.textures.filter(({ id }) => id === res.object.name)[0]; // сиблинг по которому кликнули
-          const currentTexture = this.textures.filter(({ id }) => id === this.currentId)[0]; // текущая текстура
+          const siblingData = this.data.filter(
+            ({ id }) => id === res.object.name
+          )[0]; // сиблинг по которому кликнули
+          const currentData = this.data.filter(
+            ({ id }) => id === this.currentId
+          )[0]; // текущая текстура
 
           // единичный вектор
           const unit_vec = helpers.getUnicVector(
-            currentTexture.coords,
-            siblingTexture.coords
+            currentData.coords,
+            siblingData.coords
           );
           // создать other сферу и расположить ее на 10ед дальше по прямой
           const coefficient = 8;
@@ -134,22 +157,23 @@ export default class Environment {
           // поворот камеры
           this.camera.lookAt(newCoords.x, 0, newCoords.z);
 
-          const { id, coords, siblings, src } = siblingTexture;
+          const { id, src } = siblingData;
+          const texture = await this.loadTexture(id, src, true);
 
-          const location = new Location(id,src, this.reactComponent,this);
-          const texture = await location.loadTexture(id,true);
-
-          console.log(texture)
           this.otherSphere.setTexture(texture);
-          this.otherSphere.changePosition(newCoords.x, newCoords.y, newCoords.z);
+          this.otherSphere.changePosition(
+            newCoords.x,
+            newCoords.y,
+            newCoords.z
+          );
 
           const temp = { ...newCoords, opacity: 1, opacity2: 0 };
           let tween = new TWEEN.Tween(temp)
             .to({ x: 0, y: 0, z: 0, opacity: 0, opacity2: 1 }, 3000)
             .onUpdate(() => {
               this.otherSphere.changePosition(temp.x, temp.y, temp.z);
-              this.mainSphere.changeOpacity(temp.opacity)
-              this.otherSphere.changeOpacity(temp.opacity2)
+              this.mainSphere.changeOpacity(temp.opacity);
+              this.otherSphere.changeOpacity(temp.opacity2);
             })
             .start()
             .onComplete(() => {
@@ -158,9 +182,8 @@ export default class Environment {
               this.otherSphere.changePosition(0, -10000, 0);
 
               this.isSphereAnimation = false;
-              this.switchEnvironment(siblingTexture, false);
+              this.switchEnvironment(siblingData);
             });
-
         }
       }
     }
@@ -181,31 +204,29 @@ export default class Environment {
     this.scene.add(this.arrowGroup.arrowGroup);
   };
 
-  switchEnvironment = async (sibling) => {
+  switchEnvironment = async (siblingData) => {
     for (let i = this.scene.children.length - 1; i >= 0; i--) {
       if (this.scene.children[i].name === "arrowGroup") {
         this.scene.remove(this.scene.children[i]);
       }
     }
 
-    const { id, coords, siblings, src } = sibling;
+    const { id, coords, siblings, src } = siblingData;
     this.currentId = id;
     this.reactComponent.updateId(id);
 
-    const location = new Location(id,src, this.reactComponent,this);
-
-    const texture = await location.loadTexture(id,false);
+    const texture = await this.loadTexture(id, src, true);
     this.mainSphere.setTexture(texture);
-    
+
     this.createArrows(siblings, coords);
     this.reactComponent.closeModalMap();
+    
 
-    siblings.forEach(async sibling=>{
-      const src = this.textures.filter(({id})=>sibling===id)[0].src;
-      const location = new Location(sibling,src, this.reactComponent,this);
-      const texture = await location.loadTexture(sibling,false);
-      this.locations.push({id:sibling,texture})
-    })
+    siblings.forEach(async (sibling) => {
+      const srcSibling = this.data.filter(({ id }) => sibling === id)[0].src;
+      await this.loadTexture(sibling, srcSibling, false);
+    });
+
   };
 
   getIntersects = (x, y) => {

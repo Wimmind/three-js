@@ -1,6 +1,4 @@
 import * as THREE from 'three';
-
-
 export default class Sphere {
   constructor(name,params) {
     const geometrySphere = new THREE.SphereBufferGeometry(10, 60, 40);
