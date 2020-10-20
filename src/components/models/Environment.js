@@ -22,7 +22,7 @@ export default class Environment {
   isSphereAnimation = false;
 
   init = async () => {
-    this.camera = new THREE.PerspectiveCamera(75,window.innerWidth / window.innerHeight,1,1100);
+    this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 1, 1100);
     this.camera.target = new THREE.Vector3(0, 0, 0);
     this.scene = new THREE.Scene();
     this.renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -37,11 +37,15 @@ export default class Environment {
     this.currentId = id;
     this.reactComponent.updateId(id);
 
-    const texture = await this.loadTexture(id, src, true);
+    // текстура для текущей локации
+    const location = new Location(id, src, this.reactComponent, this)
+    const texture = await location.loadTexture(true);
 
+    // текстуры для локации сиблингов
     siblings.forEach(async (sibling) => {
       const srcSibling = this.data.filter(({ id }) => sibling === id)[0].src;
-      await this.loadTexture(sibling, srcSibling, false);
+      const siblingLocation = new Location(sibling, srcSibling, this.reactComponent, this)
+      await siblingLocation.loadTexture(false);
     });
 
     this.mainSphere = new Sphere("main", {
@@ -61,32 +65,10 @@ export default class Environment {
     this.scene.add(this.mainSphere.mesh, this.otherSphere.mesh);
   };
 
-  loadTexture = async (id, src, isSpinner) => {
-    const objectTexture = this.textures.find((location) => location.id === id);
-    if (objectTexture) {
-      return objectTexture.texture;
-    } else {
-      const loader = new THREE.TextureLoader();
-      return new Promise((resolve) => {
-        if (isSpinner) {
-          this.reactComponent.startLoadImage();
-        }
-        loader.load(`/textures/${src}`, (texture) => {
-          if (isSpinner) {
-            this.reactComponent.endLoadImage();
-          }
-          this.textures.push({ id, texture })
-          resolve(texture);
-          console.log(this.textures);
-        });
-      });
-    }
-  };
-
   initEvents = () => {
     const windowEvents = [
-      { action: "mousedown", evt: this.onPointerStart },
-      { action: "mousemove", evt: this.onPointerMove },
+      { action: "mousedown", evt: this.onCursorDown },
+      { action: "mousemove", evt: this.onCursorMove },
       { action: "mouseup", evt: this.onCursorUp },
       { action: "resize", evt: this.onWindowResize },
     ];
@@ -95,7 +77,7 @@ export default class Environment {
     });
   };
 
-  onPointerStart = (event) => {
+  onCursorDown = (event) => {
     if (!this.isSphereAnimation) {
       const clientX = event.clientX || event.touches[0].clientX;
       const clientY = event.clientY || event.touches[0].clientY;
@@ -106,7 +88,7 @@ export default class Environment {
     }
   };
 
-  onPointerMove = (event) => {
+  onCursorMove = (event) => {
     if (!this.isSphereAnimation) {
       if (!this.mouseDownMouseX) return;
       const clientX = event.clientX;
@@ -151,14 +133,16 @@ export default class Environment {
             y: unit_vec.y * coefficient,
             z: unit_vec.z * coefficient,
           };
-
+          const cameraTarget = this.camera.target;
           // вырубить все управление
           this.isSphereAnimation = true;
           // поворот камеры
           this.camera.lookAt(newCoords.x, 0, newCoords.z);
-
+    
           const { id, src } = siblingData;
-          const texture = await this.loadTexture(id, src, true);
+          //const texture = await this.loadTexture(id, src, true);
+          const location = new Location(id, src, this.reactComponent, this)
+          const texture = await location.loadTexture(true);
 
           this.otherSphere.setTexture(texture);
           this.otherSphere.changePosition(
@@ -180,9 +164,10 @@ export default class Environment {
               this.mainSphere.changeOpacity(1);
               this.otherSphere.changeOpacity(0);
               this.otherSphere.changePosition(0, -10000, 0);
-
+              
               this.isSphereAnimation = false;
               this.switchEnvironment(siblingData);
+
             });
         }
       }
@@ -215,18 +200,20 @@ export default class Environment {
     this.currentId = id;
     this.reactComponent.updateId(id);
 
-    const texture = await this.loadTexture(id, src, true);
+    // текстура для текущей локации
+    const location = new Location(id,src,this.reactComponent,this)
+    const texture = await location.loadTexture(true);
     this.mainSphere.setTexture(texture);
 
     this.createArrows(siblings, coords);
     this.reactComponent.closeModalMap();
-    
 
+    // текстуры для локации сиблингов
     siblings.forEach(async (sibling) => {
       const srcSibling = this.data.filter(({ id }) => sibling === id)[0].src;
-      await this.loadTexture(sibling, srcSibling, false);
+      const siblingLocation = new Location(sibling, srcSibling, this.reactComponent, this)
+      await siblingLocation.loadTexture(false);
     });
-
   };
 
   getIntersects = (x, y) => {
