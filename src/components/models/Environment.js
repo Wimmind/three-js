@@ -129,10 +129,16 @@ export default class Environment {
             z: unit_vec.z * coefficient,
           };
           // вырубить все управление
+
+          this.phi = helpers.findAnglesAndCoords(newCoords).phi;
+          this.theta = helpers.findAnglesAndCoords(newCoords).theta;
+          this.lat = helpers.findAnglesAndCoords(newCoords).lat;
+          this.lon = helpers.findAnglesAndCoords(newCoords).lon;
+
           this.isSphereAnimation = true;
           // поворот камеры
           this.camera.lookAt(newCoords.x, 0, newCoords.z);
-
+          
           const location = new Location(siblingData, this.reactComponent, this);
           const texture = await location.loadTexture(true);
           this.otherSphere.setTexture(texture);
@@ -157,10 +163,9 @@ export default class Environment {
               this.otherSphere.changeOpacity(0);
               this.otherSphere.changePosition(0, -10000, 0);
 
+
               this.isSphereAnimation = false;
               this.switchEnvironment(siblingData);
-
-              this.camera.lookAt(this.cameraTarget);
             });
         }
       }
@@ -231,7 +236,6 @@ export default class Environment {
       this.camera.target.z = delta * Math.sin(this.phi) * Math.sin(this.theta);
 
       this.camera.lookAt(this.camera.target);
-      this.cameraTarget = this.camera.target;
     }
 
     this.renderer.render(this.scene, this.camera);
