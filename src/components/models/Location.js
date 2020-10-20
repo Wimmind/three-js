@@ -1,17 +1,18 @@
 import * as THREE from "three";
 
 export default class Location {
-  constructor(id,src, reactComponent,APP) {
+  constructor({id,src,siblings}, reactComponent,APP) {
     this.id = id;
     this.src = src;
     this.reactComponent = reactComponent;
     this.APP = APP;
+    this.siblings = siblings;
   }
 
   loadTexture = async (isSpinner) => {
-    const objectTexture = this.APP.textures.find((texture) => texture.id === this.id);
-    if (objectTexture) {
-      return objectTexture.texture;
+    let find = this.APP.locations.find((location) => location.id === this.id)
+    if (find) {
+      return find.texture;
     } else {
       const loader = new THREE.TextureLoader();
       return new Promise((resolve) => {
@@ -22,14 +23,27 @@ export default class Location {
           if (isSpinner) {
             this.reactComponent.endLoadImage();
           }
-          this.APP.textures.push({ id: this.id, texture })
+          this.APP.locations.push(this)
+          this.texture = texture;
           resolve(texture);
         });
       });
     }
   };
 
-  loadSiblingsTexture = () => {
-
+  loadSiblings = (isSpinner) => {
+    return Promise.all(this.siblings.map(async (id, key) => {
+      return new Promise(async (resolve) => {
+        let find = this.APP.locations.find((location) => location.id === id)
+        if (find) {
+          resolve(this)
+        }
+        else {
+          let _location = new Location(this.APP.data.find((data) => id === data.id), this.reactComponent, this.APP);
+          await _location.loadTexture(isSpinner)
+          resolve(_location)
+        }
+      })
+    }))
   }
 }

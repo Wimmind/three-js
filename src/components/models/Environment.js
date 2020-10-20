@@ -11,7 +11,7 @@ export default class Environment {
   constructor(reactComponent, data) {
     this.data = data;
     this.reactComponent = reactComponent;
-    this.textures = [];
+    this.locations = [];
   }
 
   lon = 0;
@@ -37,16 +37,10 @@ export default class Environment {
     this.currentId = id;
     this.reactComponent.updateId(id);
 
-    // текстура для текущей локации
-    const location = new Location(id, src, this.reactComponent, this)
+    const location = new Location(this.data[0], this.reactComponent, this);
     const texture = await location.loadTexture(true);
 
-    // текстуры для локации сиблингов
-    siblings.forEach(async (sibling) => {
-      const srcSibling = this.data.filter(({ id }) => sibling === id)[0].src;
-      const siblingLocation = new Location(sibling, srcSibling, this.reactComponent, this)
-      await siblingLocation.loadTexture(false);
-    });
+    await location.loadSiblings(false)
 
     this.mainSphere = new Sphere("main", {
       map: texture,
@@ -139,12 +133,10 @@ export default class Environment {
           // поворот камеры
           this.camera.lookAt(newCoords.x, 0, newCoords.z);
     
-          const { id, src } = siblingData;
-          //const texture = await this.loadTexture(id, src, true);
-          const location = new Location(id, src, this.reactComponent, this)
+          const location = new Location(siblingData, this.reactComponent, this);
           const texture = await location.loadTexture(true);
-
           this.otherSphere.setTexture(texture);
+
           this.otherSphere.changePosition(
             newCoords.x,
             newCoords.y,
@@ -200,20 +192,14 @@ export default class Environment {
     this.currentId = id;
     this.reactComponent.updateId(id);
 
-    // текстура для текущей локации
-    const location = new Location(id,src,this.reactComponent,this)
+    const location = new Location(siblingData, this.reactComponent, this);
     const texture = await location.loadTexture(true);
     this.mainSphere.setTexture(texture);
 
     this.createArrows(siblings, coords);
     this.reactComponent.closeModalMap();
 
-    // текстуры для локации сиблингов
-    siblings.forEach(async (sibling) => {
-      const srcSibling = this.data.filter(({ id }) => sibling === id)[0].src;
-      const siblingLocation = new Location(sibling, srcSibling, this.reactComponent, this)
-      await siblingLocation.loadTexture(false);
-    });
+    await location.loadSiblings(false)
   };
 
   getIntersects = (x, y) => {
