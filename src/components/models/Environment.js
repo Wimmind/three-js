@@ -33,7 +33,7 @@ export default class Environment {
     this.raycaster = new THREE.Raycaster();
     this.initEvents();
 
-    const { id, coords, siblings, src } = this.data[0];
+    const { id, coords, siblings } = this.data[0];
     this.currentId = id;
     this.reactComponent.updateId(id);
 
@@ -57,6 +57,7 @@ export default class Environment {
     this.createArrows(siblings, coords);
 
     this.scene.add(this.mainSphere.mesh, this.otherSphere.mesh);
+    this.animate();
   };
 
   initEvents = () => {
@@ -127,12 +128,11 @@ export default class Environment {
             y: unit_vec.y * coefficient,
             z: unit_vec.z * coefficient,
           };
-          const cameraTarget = this.camera.target;
           // вырубить все управление
           this.isSphereAnimation = true;
           // поворот камеры
           this.camera.lookAt(newCoords.x, 0, newCoords.z);
-    
+
           const location = new Location(siblingData, this.reactComponent, this);
           const texture = await location.loadTexture(true);
           this.otherSphere.setTexture(texture);
@@ -156,10 +156,11 @@ export default class Environment {
               this.mainSphere.changeOpacity(1);
               this.otherSphere.changeOpacity(0);
               this.otherSphere.changePosition(0, -10000, 0);
-              
+
               this.isSphereAnimation = false;
               this.switchEnvironment(siblingData);
 
+              this.camera.lookAt(this.cameraTarget);
             });
         }
       }
@@ -188,7 +189,7 @@ export default class Environment {
       }
     }
 
-    const { id, coords, siblings, src } = siblingData;
+    const { id, coords, siblings } = siblingData;
     this.currentId = id;
     this.reactComponent.updateId(id);
 
@@ -220,16 +221,17 @@ export default class Environment {
 
   update = () => {
     const delta = 500;
-
-    this.lat = Math.max(-85, Math.min(85, this.lat));
-    this.phi = THREE.MathUtils.degToRad(90 - this.lat);
-    this.theta = THREE.MathUtils.degToRad(this.lon);
-
     if (!this.isSphereAnimation) {
+      this.lat = Math.max(-85, Math.min(85, this.lat));
+      this.phi = THREE.MathUtils.degToRad(90 - this.lat);
+      this.theta = THREE.MathUtils.degToRad(this.lon);
+
       this.camera.target.x = delta * Math.sin(this.phi) * Math.cos(this.theta);
       this.camera.target.y = delta * Math.cos(this.phi);
       this.camera.target.z = delta * Math.sin(this.phi) * Math.sin(this.theta);
+
       this.camera.lookAt(this.camera.target);
+      this.cameraTarget = this.camera.target;
     }
 
     this.renderer.render(this.scene, this.camera);

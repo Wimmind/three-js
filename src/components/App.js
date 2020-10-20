@@ -15,7 +15,6 @@ export default class App extends Component {
 
   componentDidMount() {
     this.myEnvironment.init();
-    this.myEnvironment.animate();
 
     document.querySelector('.wrapper').addEventListener('click', (e) => {
       if (!e.target.classList.contains('map')) {
@@ -29,7 +28,7 @@ export default class App extends Component {
   }
 
   switchScene = (texture) => {
-    this.myEnvironment.switchEnvironment(texture,true);
+    this.myEnvironment.switchEnvironment(texture);
   }
 
   showModalMap = () => {
@@ -70,8 +69,8 @@ export default class App extends Component {
                 key={`${id}`}
                 style={
                   {
-                    top: `${coords.z * 25}px`,
-                    left: `${coords.x * 25 + 130}px`,
+                    top: `${coords.z * 40}px`,
+                    left: `${coords.x * 40 + 120}px`,
                     backgroundColor: id === currentId ? 'blue' : 'greenyellow'
                   }
                 }></span>

@@ -15,7 +15,7 @@ export default class Minimap extends Component {
 						style={
 							{
 								top: `${coords.z * 15}px`,
-								left: `${coords.x * 15 + 80}px`,
+								left: `${coords.x * 15 + 50}px`,
 								backgroundColor: id === currentId ? 'blue' : 'greenyellow'
 							}
 						}></span>

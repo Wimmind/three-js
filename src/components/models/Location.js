@@ -20,12 +20,12 @@ export default class Location {
           this.reactComponent.startLoadImage();
         }
         loader.load(`/textures/${this.src}`, (texture) => {
-          if (isSpinner) {
-            this.reactComponent.endLoadImage();
-          }
           this.APP.locations.push(this)
           this.texture = texture;
           resolve(texture);
+          if (isSpinner) {
+            this.reactComponent.endLoadImage();
+          }
         });
       });
     }
