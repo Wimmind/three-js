@@ -29,21 +29,3 @@ export function resizeTriangle(point, x0, z0) {
     z: z0 + k * (point.z - z0)
   }
 }
-
-
-export function findAnglesAndCoords({ x, y, z }) {
-
-  // x = -498;
-  // z = 23;
-
-  const delta = 500;
-
-  const phi = Math.acos(y)
-  const theta = Math.acos(x / (delta * Math.sin(phi)));
-  const lon = theta * (180 / Math.PI);
-  const lat = 90 - phi * (180 / Math.PI);
-
-  return {
-    phi, theta, lon, lat
-  }
-}
